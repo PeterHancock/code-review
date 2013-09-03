@@ -10,11 +10,9 @@
         <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
         <script>
         (function(){
-            $(function(){
+            function shuffle() {
                 var devs = _.shuffle(window.location.search.substr(1).split(','));
-                var table = $('<table></table>');
-                var row;
-                table.append('<tr><td>Reviewer</td><td>Author</td></tr>');
+                var tbody = $('<tbody></tbody>');
                 devs.push(_(devs).first());
                 var pairs = _.chain(devs).rest().reduce(function(memo, next){
                         memo.pairs.push({reviewer: memo.last, author: next})
@@ -26,19 +24,34 @@
                         .sortBy(function(pair){return pair.reviewer.slice(-1)})
                         .each(function(pair){
                             row = $('<tr></tr>')
-                            table.append(row)
+                            tbody.append(row)
                             row.append('<td>' + pair.reviewer  + '</td>')
                             row.append('<td>' + pair.author  + '</td>')
 
                         })
-                $('#review').append(table);
+                $('#review tbody').replaceWith(tbody);
+            }
+            $(function(){
+                shuffle();
+                $('#reshuffle').click(function(){
+                    shuffle();
+                });
                 
             });
         }).call(this);
         </script>
     </head>
     <body>
-        <div id="review"></div>
+        <div class="container">
+            <h1>Code Reviewers</h1>
+            <div id="review">
+                <table class="table">
+                    <thead><tr><th>Reviewer</th><th>Developer</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="reshuffle" type="button" class="btn btn-primary btn-lg">Reshuffle</button>
+        </div>
     </body>
 </html>
 
