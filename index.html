@@ -1,8 +1,41 @@
 <!DOCTYPE html>
 <html>
-    <body>
+    <head>
         <title>Code Review
         </title>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
+        <script>
+        (function(){
+            $(function(){
+                var devs = _.shuffle(window.location.search.substr(1).split(','));
+                var table = $('<table></table>');
+                var row;
+                table.append('<tr><td>Reviewer</td><td>Author</td></tr>');
+                devs.push(_(devs).first());
+                var pairs = _.chain(devs).rest().reduce(function(memo, next){
+                        memo.pairs.push({reviewer: memo.last, author: next})
+                        memo.last = next
+                        return memo
+                    }
+                    ,{last:_(devs).first(),pairs:[]}).value().pairs
+                    _.chain(pairs)
+                        .sortBy(function(pair){return pair.reviewer.slice(-1)})
+                        .each(function(pair){
+                            row = $('<tr></tr>')
+                            table.append(row)
+                            row.append('<td>' + pair.reviewer  + '</td>')
+                            row.append('<td>' + pair.author  + '</td>')
+
+                        })
+                $('#review').append(table);
+                
+            });
+        }).call(this);
+        </script>
+    </head>
+    <body>
+        <div id="review"></div>
     </body>
 </html>
 
