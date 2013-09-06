@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Code Review
+        </title>
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
+        <script>
+        (function(){
+            function shuffle() {
+                var devs = _.shuffle(window.location.search.substr(1).split(','));
+                var tbody = $('<tbody></tbody>');
+                devs.push(_(devs).first());
+                var pairs = _.chain(devs).rest().reduce(function(memo, next){
+                        memo.pairs.push({reviewer: memo.last, author: next})
+                        memo.last = next
+                        return memo
+                    }
+                    ,{last:_(devs).first(),pairs:[]}).value().pairs
+                    _.chain(pairs)
+                        .sortBy(function(pair){return pair.reviewer.slice(-1)})
+                        .each(function(pair){
+                            row = $('<tr></tr>')
+                            tbody.append(row)
+                            row.append('<td>' + pair.reviewer  + '</td>')
+                            row.append('<td>' + pair.author  + '</td>')
+
+                        })
+                $('#review tbody').replaceWith(tbody);
+            }
+            $(function(){
+                shuffle();
+                $('#reshuffle').click(function(){
+                    shuffle();
+                });
+                
+            });
+        }).call(this);
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Code Reviewers</h1>
+            <div id="review">
+                <table class="table">
+                    <thead><tr><th>Reviewer</th><th>Developer</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="reshuffle" type="button" class="btn btn-primary btn-lg">Reshuffle</button>
+        </div>
+    </body>
+</html>
+
+
