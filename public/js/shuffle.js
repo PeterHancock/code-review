@@ -8,9 +8,7 @@
         var reviewersHistory = _(history).map(function(sprint) {
             return _(sprint).intersection(reviewers);
         })
-        console.log('hisory',reviewersHistory);
         var allCosts = calcAllCosts(reviewers, reviewersHistory)
-        console.log(allCosts);
         var items = _.chain(reviewers).shuffle().map(function(reviewer) {return [reviewer]}).value();
         return shuffleItems(items, allCosts);
     }

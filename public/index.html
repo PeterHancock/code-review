@@ -8,36 +8,60 @@
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
         <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
-        <script src="shuffle.js"></script>
+        <script src="/js/shuffle.js"></script>
         <script>
         (function(){
-            function shuffle() {
-                var devs = _.shuffle(window.location.search.substr(1).split(','));
+            var reviewers;
+            var history;
+            function render() {
                 var tbody = $('<tbody></tbody>');
-                devs.push(_(devs).first());
-                var pairs = _.chain(devs).rest().reduce(function(memo, next){
-                        memo.pairs.push({reviewer: memo.last, author: next})
+                var active = _(reviewers).filter(function(reviewer){ return reviewer.active; });
+                var names = _(active).pluck('name');
+                var sprint = shuffle(names, history);
+                sprint.push(_(sprint).first());
+                var reviewTable = _.chain(sprint).rest().reduce(function(memo, next){
+                        memo.reviewTable[memo.last] = next
                         memo.last = next
                         return memo
                     }
-                    ,{last:_(devs).first(),pairs:[]}).value().pairs
-                    _.chain(pairs)
-                        .sortBy(function(pair){return pair.reviewer.slice(-1)})
-                        .each(function(pair){
-                            row = $('<tr></tr>')
-                            tbody.append(row)
-                            row.append('<td>' + pair.reviewer  + '</td>')
-                            row.append('<td>' + pair.author  + '</td>')
+                    ,{last: _(sprint).first(), reviewTable: {}}).value().reviewTable
+                _(reviewers).each(function(reviewer){
+                    row = $('<tr></tr>');
+                    tbody.append(row);
+                    var reviewerCell = $('<td/>'); 
+                    var revToggle = $('<button class="btn">' + reviewer.name  + '</button>')
+                    row.append(reviewerCell);
+                    reviewerCell.append(revToggle);
+                    revToggle.click(function() {
+                        reviewer.active = ! reviewer.active;
+                        render();
+                    });
+                    var devCell =  $('<td/>');
+                    row.append(devCell);
+                    if (reviewer.active) {
+                        var devName = reviewTable[reviewer.name]; 
+                        var devButton = $('<button class="btn btn-success">' + devName + '</button>');
+                        devCell.append(devButton);
+                        devButton.click(function() {
+                            _(active).find(function(per) {return per.name == devName; }).active = false;
+                            render();
+                        });
+                        revToggle.addClass('btn-success');
+                    } else {
+                        revToggle.addClass('btn-warning')
+                    } 
 
-                        })
+                });
                 $('#review tbody').replaceWith(tbody);
             }
             $(function(){
-                shuffle();
+                var names = _.sortBy(window.location.search.substr(1).split(','), function(reviewer) { return reviewer.slice(-1) });
+                history = [names];
+                reviewers = _(names).map(function(name) { return {name: name, active: true} }); 
+                render();
                 $('#reshuffle').click(function(){
-                    shuffle();
+                    render();
                 });
-                
             });
         }).call(this);
         </script>
