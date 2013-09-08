@@ -32,7 +32,7 @@
                     row = $('<tr></tr>');
                     tbody.append(row);
                     var reviewerCell = $('<td/>');
-                    var revToggle = $('<button class="btn">' + reviewer.name  + '</button>')
+                    var revToggle = $('<button class="btn btn-default">' + reviewer.name  + '</button>')
                     row.append(reviewerCell);
                     reviewerCell.append(revToggle);
                     revToggle.click(function() {
@@ -43,16 +43,20 @@
                     row.append(devCell);
                     if (reviewer.active) {
                         var devName = reviewTable[reviewer.name];
-                        var devButton = $('<button class="btn btn-success">' + devName + '</button>');
+                        var devButton = $('<button class="btn btn-default">' + devName + '</button>');
                         devCell.append(devButton);
+                        revToggle.attr('title', 'Remove ' + reviewer.name + ' from new Sprint')
                         devButton.click(function() {
                             _(active).find(function(per) {return per.name == devName; }).active = false;
                             renderGenerate();
                         });
-                        revToggle.addClass('btn-success');
+                        devButton.attr('title', 'Remove ' + devName + ' from new Sprint');
+                        devButton.tooltip();
                     } else {
+                        revToggle.attr('title', 'Add ' + reviewer.name + ' to new Sprint')
                         revToggle.addClass('btn-warning')
                     }
+                    revToggle.tooltip();
                 });
                 $('#review tbody').replaceWith(tbody);
             }
@@ -60,13 +64,14 @@
                 var currentEl = $('#current');
                 currentEl.empty();
                 var historyLength = history.length;
+                $('#sprint-number').text(historyLength);
                 if(historyLength > 0) {
-                    var current = $('<div> <strong>Sprint ' + historyLength + ':</strong> ' + formatSprint(_(history).first()) + '</div>');
+                    var current = $('<div style="font-size:1.5em">' + formatSprint(_(history).first()) + '</div>');
                     currentEl.append(current);
                     var removeBtn = $('<button class="btn btn-danger pull-right" title="Revert Sprint"><span class="glyphicon glyphicon-remove"></span></button>');
                     current.append(removeBtn);
                     removeBtn.click(deleteCurrent);
-                    removeBtn.hover(function(){removeBtn.tooltip()});
+                    removeBtn.tooltip();
                 } else {
                     currentEl.append('<div class="alert alert-info">There is no Active Sprint</div>');
                 }
@@ -82,7 +87,7 @@
                 if (histLength) {
                     _(history).each(function(sprint, i) {
                         var markup = '<strong>' + (histLength - i) + '</strong> ' +formatSprint(sprint);
-                        historyEl.append('<li class="list-group-item">' + markup + '</li>');
+                        historyEl.append('<li class="list-group-item" style="font-size:1.5em">' + markup + '</li>');
                     });
                 } else {
                     historyEl.append('<div class="alert alert-info">There is no Sprint History</div>');
@@ -98,13 +103,19 @@
                var ns = [];
                ns.push.apply(ns, sprint);
                ns.push(_(ns).first());
-               return _(ns).map(function(item) {return '<span class="label label-success">' + item+ '</span>'})
+               return _(ns).map(function(item) {return '<span class="label label-default">' + item+ '</span>'})
                        .join('<span class="glyphicon glyphicon-arrow-right"></span>');
             }
+
+            function sortReviewers() {
+                reviewers = _.sortBy(reviewers, function(reviewer) {return reviewer.name.slice(-1)});
+            }
+
             $(function(){
-                var names = _.sortBy(window.location.search.substr(1).split(','), function(reviewer) { return reviewer.slice(-1) });
+                var names = window.location.search.substr(1).split(',');
                 history = [];
                 reviewers = _(names).map(function(name) { return {name: name, active: true} });
+                sortReviewers();
                 renderPage();
                 $('#reshuffle').click(function(){
                     renderGenerate();
@@ -115,41 +126,74 @@
                     history = newHistory;
                     renderPage();
                 });
-            });
+                $('#create-developer-form').submit(function(e) {
+                    e.preventDefault();
+                    var name = $('#developer-name').val();
+                    reviewers.push({name:name, active: true});
+                    sortReviewers();
+                    $('#addReviewer').modal('hide');
+                    renderPage();
+                });
+                $('.btn').each(function(i, e) {
+                    $(e).tooltip()});
+                });
         }).call(this);
         </script>
     </head>
     <body>
         <div class="container">
-            <h1>Code Reviewers</h1>
+            <h1>Code Reviews</h1>
             <div class="panel panel-default">
                 <div class="panel-heading">
-                    <h3>Current Sprint</h3>
+                    <h3>Current Sprint <span id="sprint-number"></span></h3>
                 </div>
                 <div id='current' class="panel-body"> </div>
             </div>
             <div class="panel panel-default">
                 <div class="panel-heading">
-                    <h3>Generate New Sprint</h3>
+                    <h3><span style="padding-right: 1em">Generate New Sprint</span>
+                    <button id="reshuffle" type="button" title="Shuffle Reviewers" class="btn btn-primary btn"><span class="glyphicon glyphicon-random"></span></button>
+                    <button id="commit" type="button" class="btn btn-success btn" title="Start Sprint"><span class="glyphicon glyphicon-ok"></span></button>
+                    </h3>
                 </div>
                 <div id="review" class="panel-body">
                     <table class="table">
                         <thead><tr><th>Reviewer</th><th>Developer</th></tr></thead>
                         <tbody></tbody>
                     </table>
+                    <a data-toggle="modal" href="#addReviewer" class="btn btn-primary" title="Add a Reviewer/Developer"><span class="glyphicon glyphicon-plus"></span></a>
                 </div>
-            <button id="reshuffle" type="button" class="btn btn-primary">Reshuffle</button>
-            <button id="commit" type="button" class="btn btn-primary">Commit</button>
-            </div>
-            <div class="panel panel-default">
+          </div>
+          <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3>Code Review History</h3>
                 </div>
                 <div class="panel-body">
                     <ul id='history' class='list-group'> </ul>
                 </div>
-            </div>
-        </div>
+          </div>
+     </div>
+
+     <!-- Add Developer Modal -->
+     <div class="modal fade" id="addReviewer" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+       <div class="modal-dialog">
+         <div class="modal-content">
+           <div class="modal-header">
+             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+             <h3 class="modal-title">Add A Developer</h3>
+           </div>
+           <form action="" method="GET" id="create-developer-form">
+           <div class="modal-body">Name
+             <input type="text" id="developer-name" required="required" />
+           </div>
+           <div class="modal-footer">
+             <button type="button" class="btn btn-danger" data-dismiss="modal"><span class="glyphicon glyphicon-remove"></span></button>
+             <button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-ok"></span></button>
+           </div>
+           </form>
+         </div>
+       </div>
+     </div>
     </body>
 </html>
 
