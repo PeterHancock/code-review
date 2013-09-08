@@ -13,11 +13,14 @@
         (function(){
             var reviewers;
             var history;
+            var current;
             function render() {
                 var tbody = $('<tbody></tbody>');
                 var active = _(reviewers).filter(function(reviewer){ return reviewer.active; });
                 var names = _(active).pluck('name');
                 var sprint = shuffle(names, history);
+                current = [];
+                current.push.apply(current, sprint);
                 sprint.push(_(sprint).first());
                 var reviewTable = _.chain(sprint).rest().reduce(function(memo, next){
                         memo.reviewTable[memo.last] = next
@@ -50,16 +53,55 @@
                     } else {
                         revToggle.addClass('btn-warning')
                     } 
-
                 });
                 $('#review tbody').replaceWith(tbody);
             }
+            function renderCurrent() {
+                var currentEl = $('#current');
+                currentEl.empty();
+                var historyLength = history.length;
+                if(current) {
+                    currentEl.append('<div> <strong>Sprint ' + historyLength + ':</strong> ' + formatSprint(_(history).first()) + '</div>');
+                } else {
+                    currentEl.append('<div class="alert alert-info">There is no Active Sprint</div>');
+                }
+            }
+            function renderHistory() {
+                var historyEl = $('#history');
+                historyEl.empty();
+                var histLength = history.length;
+                if (histLength) {
+                    _(history).each(function(sprint, i) {
+                        var markup = '<strong>' + (histLength - i) + '</strong> ' +formatSprint(sprint);
+                        historyEl.append('<li class="list-group-item">' + markup + '</li>');
+                    });
+                } else {
+                    historyEl.append('<div class="alert alert-info">There is no Sprint History</div>');
+                }
+            }
+            function formatSprint(sprint) {
+               var ns = [];
+               ns.push.apply(ns, sprint);
+               ns.push(_(ns).first());
+               return _(ns).map(function(item) {return '<span class="label label-success">' + item+ '</span>'})
+                       .join('<span class="glyphicon glyphicon-arrow-right"></span>');
+            }
             $(function(){
                 var names = _.sortBy(window.location.search.substr(1).split(','), function(reviewer) { return reviewer.slice(-1) });
-                history = [names];
+                history = [];
                 reviewers = _(names).map(function(name) { return {name: name, active: true} }); 
+                renderCurrent();
+                renderHistory();
                 render();
                 $('#reshuffle').click(function(){
+                    render();
+                });
+                $('#commit').click(function(){
+                    var h = [current];
+                    h.push.apply(h, history);
+                    history = h;
+                    renderCurrent();
+                    renderHistory();
                     render();
                 });
             });
@@ -69,13 +111,33 @@
     <body>
         <div class="container">
             <h1>Code Reviewers</h1>
-            <div id="review">
-                <table class="table">
-                    <thead><tr><th>Reviewer</th><th>Developer</th></tr></thead>
-                    <tbody></tbody>
-                </table>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3>Current Sprint</h3>
+                </div>
+                <div id='current' class="panel-body"> </div>
             </div>
-            <button id="reshuffle" type="button" class="btn btn-primary btn-lg">Reshuffle</button>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3>Generate New Sprint</h3>
+                </div>
+                <div id="review" class="panel-body">
+                    <table class="table">
+                        <thead><tr><th>Reviewer</th><th>Developer</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            <button id="reshuffle" type="button" class="btn btn-primary">Reshuffle</button>
+            <button id="commit" type="button" class="btn btn-primary">Commit</button>
+            </div>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3>Code Review History</h3>
+                </div>
+                <div class="panel-body">
+                    <ul id='history' class='list-group'> </ul>
+                </div>
+            </div>
         </div>
     </body>
 </html>
