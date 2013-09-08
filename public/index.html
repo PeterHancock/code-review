@@ -13,14 +13,14 @@
         (function(){
             var reviewers;
             var history;
-            var current;
-            function render() {
+            var generated;
+            function renderGenerate() {
                 var tbody = $('<tbody></tbody>');
                 var active = _(reviewers).filter(function(reviewer){ return reviewer.active; });
                 var names = _(active).pluck('name');
                 var sprint = shuffle(names, history);
-                current = [];
-                current.push.apply(current, sprint);
+                generated = [];
+                generated.push.apply(generated, sprint);
                 sprint.push(_(sprint).first());
                 var reviewTable = _.chain(sprint).rest().reduce(function(memo, next){
                         memo.reviewTable[memo.last] = next
@@ -31,28 +31,28 @@
                 _(reviewers).each(function(reviewer){
                     row = $('<tr></tr>');
                     tbody.append(row);
-                    var reviewerCell = $('<td/>'); 
+                    var reviewerCell = $('<td/>');
                     var revToggle = $('<button class="btn">' + reviewer.name  + '</button>')
                     row.append(reviewerCell);
                     reviewerCell.append(revToggle);
                     revToggle.click(function() {
                         reviewer.active = ! reviewer.active;
-                        render();
+                        renderGenerate();
                     });
                     var devCell =  $('<td/>');
                     row.append(devCell);
                     if (reviewer.active) {
-                        var devName = reviewTable[reviewer.name]; 
+                        var devName = reviewTable[reviewer.name];
                         var devButton = $('<button class="btn btn-success">' + devName + '</button>');
                         devCell.append(devButton);
                         devButton.click(function() {
                             _(active).find(function(per) {return per.name == devName; }).active = false;
-                            render();
+                            renderGenerate();
                         });
                         revToggle.addClass('btn-success');
                     } else {
                         revToggle.addClass('btn-warning')
-                    } 
+                    }
                 });
                 $('#review tbody').replaceWith(tbody);
             }
@@ -60,11 +60,20 @@
                 var currentEl = $('#current');
                 currentEl.empty();
                 var historyLength = history.length;
-                if(current) {
-                    currentEl.append('<div> <strong>Sprint ' + historyLength + ':</strong> ' + formatSprint(_(history).first()) + '</div>');
+                if(historyLength > 0) {
+                    var current = $('<div> <strong>Sprint ' + historyLength + ':</strong> ' + formatSprint(_(history).first()) + '</div>');
+                    currentEl.append(current);
+                    var removeBtn = $('<button class="btn btn-danger pull-right" title="Revert Sprint"><span class="glyphicon glyphicon-remove"></span></button>');
+                    current.append(removeBtn);
+                    removeBtn.click(deleteCurrent);
+                    removeBtn.hover(function(){removeBtn.tooltip()});
                 } else {
                     currentEl.append('<div class="alert alert-info">There is no Active Sprint</div>');
                 }
+            }
+            function deleteCurrent() {
+              history=_(history).rest();
+              renderPage();
             }
             function renderHistory() {
                 var historyEl = $('#history');
@@ -79,6 +88,12 @@
                     historyEl.append('<div class="alert alert-info">There is no Sprint History</div>');
                 }
             }
+            function renderPage() {
+                generated = null;
+                renderCurrent();
+                renderGenerate();
+                renderHistory();
+            }
             function formatSprint(sprint) {
                var ns = [];
                ns.push.apply(ns, sprint);
@@ -89,20 +104,16 @@
             $(function(){
                 var names = _.sortBy(window.location.search.substr(1).split(','), function(reviewer) { return reviewer.slice(-1) });
                 history = [];
-                reviewers = _(names).map(function(name) { return {name: name, active: true} }); 
-                renderCurrent();
-                renderHistory();
-                render();
+                reviewers = _(names).map(function(name) { return {name: name, active: true} });
+                renderPage();
                 $('#reshuffle').click(function(){
-                    render();
+                    renderGenerate();
                 });
                 $('#commit').click(function(){
-                    var h = [current];
-                    h.push.apply(h, history);
-                    history = h;
-                    renderCurrent();
-                    renderHistory();
-                    render();
+                    var newHistory = [generated];
+                    newHistory.push.apply(newHistory, history);
+                    history = newHistory;
+                    renderPage();
                 });
             });
         }).call(this);
@@ -141,5 +152,4 @@
         </div>
     </body>
 </html>
-
 
