@@ -5,10 +5,7 @@
     }
 
     function shuffle(reviewers, history) {
-        var reviewersHistory = _(history).map(function(sprint) {
-            return _(sprint).intersection(reviewers);
-        })
-        var allCosts = calcAllCosts(reviewers, reviewersHistory)
+        var allCosts = calcAllCosts(reviewers, history)
         var items = _.chain(reviewers).shuffle().map(function(reviewer) {return [reviewer]}).value();
         return shuffleItems(items, allCosts);
     }
@@ -30,20 +27,19 @@
     
     function calcAllCosts(reviewers, history) {
         return _(reviewers).reduce(function(memo, reviewer) {
-            var reviewerHistory = calcReviewerHistory(reviewer, history);
+            var reviewerHistory = calcReviewerHistory(reviewer, reviewers, history);
             memo[reviewer] = calcReviewCost(reviewer, reviewerHistory);
             return memo;
         }, {})
     }
     
-    function calcReviewerHistory(reviewer, history) {
+    function calcReviewerHistory(reviewer, reviewers, history) {
         return _(history).reduce(function(memo, sprint) {
             var i = _(sprint).indexOf(reviewer)
             if(i != -1) {
-                if(i == sprint.length - 1) {
-                    memo.push(sprint[0]);
-                } else {
-                    memo.push(sprint[i + 1]);
+                var reviewee = (i == sprint.length - 1) ? sprint[0] : sprint[i + 1];
+                if(_(reviewers).contains(reviewee)) {
+                    memo.push(reviewee);
                 }
             }
             return memo;
