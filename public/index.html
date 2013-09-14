@@ -8,26 +8,19 @@
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
         <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/0.7.2/mustache.min.js"></script>
         <script src="/js/shuffle.js"></script>
         <script>
         (function(){
             var reviewers;
             var history;
             var generated;
+            var constraints={};
             function renderGenerate() {
                 var tbody = $('<tbody></tbody>');
                 var active = _(reviewers).filter(function(reviewer){ return reviewer.active; });
-                var names = _(active).pluck('name');
-                var sprint = shuffle(names, history);
-                generated = [];
-                generated.push.apply(generated, sprint);
-                sprint.push(_(sprint).first());
-                var reviewTable = _.chain(sprint).rest().reduce(function(memo, next){
-                        memo.reviewTable[memo.last] = next
-                        memo.last = next
-                        return memo
-                    }
-                    ,{last: _(sprint).first(), reviewTable: {}}).value().reviewTable
+                var reviewTable = generateSprint(active, history);
+                var revieweeTemplate = Mustache.compile($('#reviewee-tmpl').html());
                 _(reviewers).each(function(reviewer){
                     row = $('<tr></tr>');
                     tbody.append(row);
@@ -43,12 +36,28 @@
                     row.append(devCell);
                     if (reviewer.active) {
                         var devName = reviewTable[reviewer.name];
-                        var devButton = $('<button class="btn btn-default">' + devName + '</button>');
+                        var others = _.chain(reviewers).filter(function(r){ return r.name != reviewer.name && r.name != devName }).value();
+                        var devButton = $(revieweeTemplate({reviewee: devName, others: others}));
                         devCell.append(devButton);
                         revToggle.attr('title', 'Remove ' + reviewer.name + ' from new Sprint')
-                        devButton.click(function() {
-                            _(active).find(function(per) {return per.name == devName; }).active = false;
-                            renderGenerate();
+                        var pinButton = devButton.find('.pin');
+                        if (constraints[reviewer.name]) {
+                            pinButton.addClass('btn-warning');
+                        }
+                        pinButton.click(function(e) {
+                            e.preventDefault();
+                            pinButton.toggleClass('btn-warning');
+                            if (constraints[reviewer.name]) {
+                                delete constraints[reviewer.name];
+                            } else {
+                                constraints[reviewer.name] = devName;
+                            }
+                        });
+                        _.chain(others).pluck('name').each(function(other) {
+                            devButton.find('.'+other.name).click(function(e) {
+                                e.preventDefault();
+                                constraints[reviewer.name] = other.name;
+                            });
                         });
                         devButton.attr('title', 'Remove ' + devName + ' from new Sprint');
                         devButton.tooltip();
@@ -60,6 +69,20 @@
                 });
                 $('#review tbody').replaceWith(tbody);
             }
+            
+            function generateSprint(reviewers, history) {
+                console.log(_.clone(constraints));
+                generated = shuffle(_(reviewers).pluck('name'), history, _.clone(constraints));
+                return _(generated).reduce(function(memo, loop) {
+                    _.chain(loop).rest().reduce(function(reviewer, reviewee) {
+                        memo[reviewer] = reviewee;
+                        return reviewee;
+                    }, _(loop).first());
+                    memo[_(loop).last()] = _(loop).first();
+                    return memo;
+                }, {});
+            }
+
             function renderCurrent() {
                 var currentEl = $('#current');
                 currentEl.empty();
@@ -100,11 +123,13 @@
                 renderHistory();
             }
             function formatSprint(sprint) {
-               var ns = [];
-               ns.push.apply(ns, sprint);
-               ns.push(_(ns).first());
-               return _(ns).map(function(item) {return '<span class="label label-default">' + item+ '</span>'})
+                return _(sprint).map(function(loop) {
+                    var ns = [];
+                    ns.push.apply(ns, loop);
+                    ns.push(_(ns).first());
+                    return _(ns).map(function(item) {return '<span class="label label-default">' + item+ '</span>'})
                        .join('<span class="glyphicon glyphicon-arrow-right"></span>');
+                }).join(', ');
             }
 
             function sortReviewers() {
@@ -195,5 +220,21 @@
        </div>
      </div>
     </body>
+
+    <script type="text/template" id="reviewee-tmpl">
+    <div class="btn-group reviewee">
+        <button type="button" class="btn btn-default pin">{{reviewee}}</button>
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" role="menu">
+            <li>Pin to:</li>
+            <li class="divider"></li>
+            {{#others}}
+            <li><a href="#" class="{{name}}">{{name}}</a></li>
+            {{/others}}
+        </ul>
+    </div>                
+    </script>
 </html>
 
