@@ -8,65 +8,172 @@
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
         <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/0.7.2/mustache.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
         <script src="/js/shuffle.js"></script>
         <script>
         (function(){
-            var reviewers;
-            var history;
-            var generated;
+
+            var CodeReviews = function(reviewers, history) {
+                this._reviewers = reviewers;
+                this._history = history || [];
+                this._constraints = {};
+                this._sortReviewers();
+            };
+
+            (function(){
+
+                this.getHistory = function() {
+                    return this._history;
+                }
+
+                this.generate = function() {
+                    var active = _(this._reviewers).filter(function(reviewer){ return reviewer.active; });
+                    this._generated = shuffle(_(this._reviewers).pluck('name'), this._history, _.clone(this._constraints));
+                    this.trigger('generate');
+                }
+                this._sortReviewers = function() {
+                    this._reviewers = _.sortBy(this._reviewers, function(reviewer) {return reviewer.name.slice(-1)});
+                }
+                this.commit = function() {
+                    if (this._generated) {
+                        this._history.unshift(this._generated);
+                        this._generated = null;
+                    }
+                    this.trigger('change');
+                }
+
+                this.addConstraint = function(reviewerName, revieweeName) {
+                    this._constraints[reviewerName] = revieweeName;
+                    this.trigger('change');
+                }
+
+                this.removeConstraint = function(reviewerName) {
+                    delete this._constraints[reviewerName];
+                    this.trigger('change');
+                }
+
+                this.hasConstraint = function (reviewerName) {
+                    return this._constraints[reviewerName] ? true : false;
+                }
+
+                this.getReviewers = function() {
+                    return this._reviewers;
+                }
+
+                this.getActiveReviewers = function() {
+                    return _(this.getReviewers()).filter(function(reviewer){ return reviewer.active; });
+                }
+
+                this.toggleReviewer = function(reviewer) {
+                    if (reviewer.active) {
+                        this.removeConstraint(reviewer.name);
+                        var pair = _.chain(this._constraints).pairs()
+                                    .find(function(pair){ return pair[1]  == reviewer.name; })
+                                    .value();
+                        if (pair) {
+                            this.removeConstraint(pair[0]);
+                        }
+                    }
+                    reviewer.active = ! reviewer.active;
+                    this.trigger('change');
+                }
+
+                this.addReviewer = function(name) {
+                    if(_(this._reviewers).find(function(reviewer){ return reviewer.name == name; })) {
+                        var message = 'Reviewer ' + name + ' already exists!';
+                        this.trigger('error', message);
+                        throw message;
+                    }
+                    this._reviewers.push({name: name, active: true});
+                    this._sortReviewers();
+                    this.trigger('change');
+                }
+
+                this.revert = function() {
+                    this._history = _(this._history).rest();
+                    this.trigger('change');
+                }
+
+                this.codeReviewTable = function() {
+                    return _(this._generated).reduce(function(memo, loop) {
+                        _.chain(loop).rest().reduce(function(reviewer, reviewee) {
+                            memo[reviewer] = reviewee;
+                            return reviewee;
+                        }, _(loop).first());
+                        memo[_(loop).last()] = _(loop).first();
+                        return memo;
+                    }, {});
+                }
+
+                _(this).extend(Backbone.Events);
+
+            }).call(CodeReviews.prototype);
+
+
+            // View logic
             function renderGenerate() {
                 var tbody = $('<tbody></tbody>');
-                var active = _(reviewers).filter(function(reviewer){ return reviewer.active; });
-                var names = _(active).pluck('name');
-                var sprint = shuffle(names, history);
-                generated = [];
-                generated.push.apply(generated, sprint);
-                sprint.push(_(sprint).first());
-                var reviewTable = _.chain(sprint).rest().reduce(function(memo, next){
-                        memo.reviewTable[memo.last] = next
-                        memo.last = next
-                        return memo
-                    }
-                    ,{last: _(sprint).first(), reviewTable: {}}).value().reviewTable
-                _(reviewers).each(function(reviewer){
+                var reviewTable = codeReview.codeReviewTable();
+                var revieweeTemplate = Mustache.compile($('#reviewee-tmpl').html());
+                _(codeReview.getReviewers()).each(function(reviewer){
                     row = $('<tr></tr>');
                     tbody.append(row);
                     var reviewerCell = $('<td/>');
-                    var revToggle = $('<button class="btn btn-default">' + reviewer.name  + '</button>')
+                    var reviewerButton = $('<button class="btn btn-default">' + reviewer.name  + '</button>')
                     row.append(reviewerCell);
-                    reviewerCell.append(revToggle);
-                    revToggle.click(function() {
-                        reviewer.active = ! reviewer.active;
+                    reviewerCell.append(reviewerButton);
+                    reviewerButton.click(function() {
+                        codeReview.toggleReviewer(reviewer);
                         renderGenerate();
                     });
                     var devCell =  $('<td/>');
                     row.append(devCell);
                     if (reviewer.active) {
-                        var devName = reviewTable[reviewer.name];
-                        var devButton = $('<button class="btn btn-default">' + devName + '</button>');
+                        var reviewee = reviewTable[reviewer.name];
+                        var others = _.chain(codeReview.getActiveReviewers()).filter(function(r){
+                                return r.name != reviewer.name && r.name != reviewee;
+                        }).value();
+                        var devButton = $(revieweeTemplate({reviewee: reviewee, others: others}));
                         devCell.append(devButton);
-                        revToggle.attr('title', 'Remove ' + reviewer.name + ' from new Sprint')
-                        devButton.click(function() {
-                            _(active).find(function(per) {return per.name == devName; }).active = false;
-                            renderGenerate();
+                        reviewerButton.attr('title', 'Remove ' + reviewer.name + ' from next Sprint')
+                        var pinButton = devButton.find('.pin');
+                        if (codeReview.hasConstraint(reviewer.name)) {
+                            pinButton.addClass('btn-warning');
+                        }
+                        pinButton.click(function(e) {
+                            e.preventDefault();
+                            pinButton.toggleClass('btn-warning');
+                            if (codeReview.hasConstraint(reviewer.name)) {
+                                codeReview.removeConstraint(reviewer.name);
+                            } else {
+                                codeReview.addConstraint(reviewer.name, reviewee);
+                            }
                         });
-                        devButton.attr('title', 'Remove ' + devName + ' from new Sprint');
-                        devButton.tooltip();
+                        _.chain(others).pluck('name').each(function(name) {
+                            devButton.find('.pin-to-' + name).click(function(e) {
+                                e.preventDefault();
+                                codeReview.addConstraint(reviewer.name, name);
+                               renderGenerate();
+                            });
+                        });
                     } else {
-                        revToggle.attr('title', 'Add ' + reviewer.name + ' to new Sprint')
-                        revToggle.addClass('btn-warning')
+                        reviewerButton.attr('title', 'Add ' + reviewer.name + ' to next Sprint')
+                                .addClass('btn-warning')
                     }
-                    revToggle.tooltip();
+                    reviewerButton.tooltip();
                 });
                 $('#review tbody').replaceWith(tbody);
             }
+
             function renderCurrent() {
+                var history = codeReview.getHistory();
                 var currentEl = $('#current');
                 currentEl.empty();
                 var historyLength = history.length;
                 $('#sprint-number').text(historyLength);
                 if(historyLength > 0) {
-                    var current = $('<div style="font-size:1.5em">' + formatSprint(_(history).first()) + '</div>');
+                    var current = $('<h2>' + formatSprint(_(history).first()) + '</h2>');
                     currentEl.append(current);
                     var removeBtn = $('<button class="btn btn-danger pull-right" title="Revert Sprint"><span class="glyphicon glyphicon-remove"></span></button>');
                     current.append(removeBtn);
@@ -77,10 +184,11 @@
                 }
             }
             function deleteCurrent() {
-              history=_(history).rest();
+              codeReview.revert();
               renderPage();
             }
             function renderHistory() {
+                var history = codeReview.getHistory();
                 var historyEl = $('#history');
                 historyEl.empty();
                 var histLength = history.length;
@@ -94,45 +202,50 @@
                 }
             }
             function renderPage() {
-                generated = null;
                 renderCurrent();
-                renderGenerate();
                 renderHistory();
-            }
-            function formatSprint(sprint) {
-               var ns = [];
-               ns.push.apply(ns, sprint);
-               ns.push(_(ns).first());
-               return _(ns).map(function(item) {return '<span class="label label-default">' + item+ '</span>'})
-                       .join('<span class="glyphicon glyphicon-arrow-right"></span>');
+                codeReview.generate();
             }
 
-            function sortReviewers() {
-                reviewers = _.sortBy(reviewers, function(reviewer) {return reviewer.name.slice(-1)});
+            function renderErrorMessage(message) {
+
+                var msg = $(Mustache.render($('#error-message-tmpl').html(), {message: message})).appendTo($('#error-messages'));
+                msg.find('.close').click(function(e){
+                    e.preventDefault();
+                    msg.remove();
+                });
+            }
+
+            function formatSprint(sprint) {
+                return _(sprint).map(function(loop) {
+                    var loop = _.clone(loop);
+                    loop.push(_(loop).head());
+                    var loopHtml = _(loop).map(function(item) {return '<span>' + item + '</span>'})
+                            .join('<span class="glyphicon glyphicon-arrow-right"></span>');
+                    return '<span class="label label-default">' + loopHtml + '</span>';
+                }).join('    ');
             }
 
             $(function(){
                 var names = window.location.search.substr(1).split(',');
-                history = [];
-                reviewers = _(names).map(function(name) { return {name: name, active: true} });
-                sortReviewers();
+                var initialReviewers = _(names).map(function(name) { return {name: name, active: true} });
+                codeReview = this.codeRewiew = new CodeReviews(initialReviewers);
+                codeReview.on('change', renderPage);
+                codeReview.on('generate', renderGenerate);
+                codeReview.on('error', renderErrorMessage);
                 renderPage();
                 $('#reshuffle').click(function(){
-                    renderGenerate();
+                    codeReview.generate();
                 });
                 $('#commit').click(function(){
-                    var newHistory = [generated];
-                    newHistory.push.apply(newHistory, history);
-                    history = newHistory;
-                    renderPage();
+                    codeReview.commit();
                 });
                 $('#create-developer-form').submit(function(e) {
                     e.preventDefault();
-                    var name = $('#developer-name').val();
-                    reviewers.push({name:name, active: true});
-                    sortReviewers();
                     $('#addReviewer').modal('hide');
-                    renderPage();
+                    var name = $('#developer-name').val();
+                    $('#developer-name').val('');
+                    codeReview.addReviewer(name);
                 });
                 $('.btn').each(function(i, e) {
                     $(e).tooltip()});
@@ -143,6 +256,7 @@
     <body>
         <div class="container">
             <h1>Code Reviews</h1>
+            <div id="error-messages"></div>
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3>Current Sprint <span id="sprint-number"></span></h3>
@@ -195,5 +309,25 @@
        </div>
      </div>
     </body>
+
+    <script type="text/template" id="reviewee-tmpl">
+    <div class="btn-group reviewee">
+        <button type="button" class="btn btn-default pin">{{reviewee}}</button>
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" role="menu">
+            <li><h4>Choose a Developer</h4></li>
+            <li class="divider"></li>
+            {{#others}}
+            <li><a href="#" class="pin-to-{{name}}">{{name}}</a></li>
+            {{/others}}
+        </ul>
+    </div>
+    </script>
+
+    <script type="text/template" id="error-message-tmpl">
+    <div class="alert">{{message}}<span class="close pull-right">&times;</span></div>
+    </script>
 </html>
 

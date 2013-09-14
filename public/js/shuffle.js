@@ -6,14 +6,13 @@
 
     function shuffle(reviewers, history, constraints) {
         //Validate params
-        console.assert(reviewers.length = _.uniq(reviewers).length)
         if (constraints) {
             console.assert(_.keys(constraints).length == _.chain(constraints).invert().keys().value().length);
             _(constraints).each(function(reviewee, reviewer) {
                 console.assert(_(reviewers).contains(reviewee));
                 console.assert(_(reviewers).contains(reviewer));
             });
-        }      
+        }     
         var items = applyConstraints(reviewers, constraints);
         var allCosts = calcAllCosts(reviewers, history);
         var shuffled = [shuffleItems(items.runs, allCosts)];
@@ -66,9 +65,30 @@
             items = _(items).reject(function(item) {
                     return _(item).first() == _(best).first();})
         }
-        return _(items).flatten();
+        return items.length > 0 ? reduceClosureCost(_(items).head(), allCosts) : items;
     }
-    
+   
+    function reduceClosureCost(items, allCosts) {
+        var initial = _(items).initial();
+        var last = _(initial).last();
+        var cost = (allCosts[_(initial).last()][last] || 0) + (allCosts[last][_(initial).head()] || 0);
+        var improvement = _.chain(initial).rest().reduce(function(memo, next, i) {
+            var cost = (allCosts[memo.prev][last] || 0) + (allCosts[last][next] || 0);
+            memo.prev = next;
+            if(cost < memo.cost) {
+                memo.cost = cost;
+                memo.i = i + 1;
+            }
+            return memo;
+        }, {cost: cost, i: 0, prev: _(initial).head()});
+        var i = improvement.i;
+        if (i > 0) {
+            items = initial;
+            items.splice(i, i, last);
+        }
+        return items;
+    }
+
     function calcAllCosts(reviewers, history) {
         return _(reviewers).reduce(function(memo, reviewer) {
             var reviewerHistory = calcReviewerHistory(reviewer, reviewers, history);
@@ -76,7 +96,7 @@
             return memo;
         }, {})
     }
-    
+   
     function calcReviewerHistory(reviewer, reviewers, history) {
         return _(history).reduce(function(memo, sprint) {
             var group = _(sprint).find(function(group) {
@@ -95,7 +115,7 @@
             return memo;
             }, [] );
     }
-    
+   
     function calcReviewCost(reviewer, reviewerHistory) {
         var weight = 1;
         return _(reviewerHistory).reduce(function(memo, reviewee) {
@@ -103,7 +123,7 @@
             weight = weight / 2;
             return memo;
         }, {});
-    } 
+    }
 
     if ((typeof module !== "undefined" && module !== null ? module.exports : void 0) != null) {
         module.exports = shuffle;
