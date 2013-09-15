@@ -10,15 +10,27 @@
         <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/0.7.2/mustache.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
+        <script type='text/javascript' src='https://cdn.firebase.com/v0/firebase.js'></script>
         <script src="/js/shuffle.js"></script>
         <script>
         (function(){
 
-            var CodeReviews = function(reviewers, history) {
-                this._reviewers = reviewers;
-                this._history = history || [];
+            var CodeReviews = function(firebase) {
+                this._firebase = firebase;
                 this._constraints = {};
-                this._sortReviewers();
+                var scope = this;
+                var broadcastChange = _.after(2, function(){
+                    scope.trigger('change');
+                });
+                firebase.child('developers').on('value', function(snapshot) {
+                    scope._reviewers = _(snapshot.val()).values() || [];
+                    scope._sortReviewers();
+                    broadcastChange();
+                });
+                firebase.child('history').on('value', function(snapshot) {
+                    scope._history = _(snapshot.val()).values().reverse() || [];
+                    broadcastChange();
+                });
             };
 
             (function(){
@@ -28,8 +40,8 @@
                 }
 
                 this.generate = function() {
-                    var active = _(this._reviewers).filter(function(reviewer){ return reviewer.active; });
-                    this._generated = shuffle(_(this._reviewers).pluck('name'), this._history, _.clone(this._constraints));
+                    var active = this.getActiveReviewers();
+                    this._generated = shuffle(_(active).pluck('name'), this._history, _.clone(this._constraints));
                     this.trigger('generate');
                 }
                 this._sortReviewers = function() {
@@ -37,10 +49,23 @@
                 }
                 this.commit = function() {
                     if (this._generated) {
-                        this._history.unshift(this._generated);
+                        var gen = this._generated;
                         this._generated = null;
+                        this._current = 'placeholder'; //TODO need a better race condition guard!
+                        this._current = this._firebase.child('history').push(gen);
                     }
-                    this.trigger('change');
+                }
+
+                this.revert = function() {
+                    if  (this.canRevert()) {
+                        var current = this._current;
+                        this._current = null;
+                        current.remove();
+                    }
+                }
+
+                this.canRevert = function() {
+                   return this._current ? true : false;
                 }
 
                 this.addConstraint = function(reviewerName, revieweeName) {
@@ -69,7 +94,7 @@
                     if (reviewer.active) {
                         this.removeConstraint(reviewer.name);
                         var pair = _.chain(this._constraints).pairs()
-                                    .find(function(pair){ return pair[1]  == reviewer.name; })
+                                    .find(function(pair){ return pair[1] == reviewer.name; })
                                     .value();
                         if (pair) {
                             this.removeConstraint(pair[0]);
@@ -85,14 +110,7 @@
                         this.trigger('error', message);
                         throw message;
                     }
-                    this._reviewers.push({name: name, active: true});
-                    this._sortReviewers();
-                    this.trigger('change');
-                }
-
-                this.revert = function() {
-                    this._history = _(this._history).rest();
-                    this.trigger('change');
+                    this._firebase.child('developers').push({name: name, active: true});
                 }
 
                 this.codeReviewTable = function() {
@@ -125,7 +143,6 @@
                     reviewerCell.append(reviewerButton);
                     reviewerButton.click(function() {
                         codeReview.toggleReviewer(reviewer);
-                        renderGenerate();
                     });
                     var devCell =  $('<td/>');
                     row.append(devCell);
@@ -175,18 +192,17 @@
                 if(historyLength > 0) {
                     var current = $('<h2>' + formatSprint(_(history).first()) + '</h2>');
                     currentEl.append(current);
-                    var removeBtn = $('<button class="btn btn-danger pull-right" title="Revert Sprint"><span class="glyphicon glyphicon-remove"></span></button>');
-                    current.append(removeBtn);
-                    removeBtn.click(deleteCurrent);
-                    removeBtn.tooltip();
+                    if(codeReview.canRevert()) {
+                        var removeBtn = $('<button class="btn btn-danger pull-right" title="Revert Sprint"><span class="glyphicon glyphicon-remove"></span></button>');
+                        current.append(removeBtn);
+                        removeBtn.click(_(codeReview.revert).bind(codeReview));
+                        removeBtn.tooltip();
+                    }
                 } else {
                     currentEl.append('<div class="alert alert-info">There is no Active Sprint</div>');
                 }
             }
-            function deleteCurrent() {
-              codeReview.revert();
-              renderPage();
-            }
+
             function renderHistory() {
                 var history = codeReview.getHistory();
                 var historyEl = $('#history');
@@ -201,6 +217,7 @@
                     historyEl.append('<div class="alert alert-info">There is no Sprint History</div>');
                 }
             }
+
             function renderPage() {
                 renderCurrent();
                 renderHistory();
@@ -226,14 +243,12 @@
                 }).join('    ');
             }
 
-            $(function(){
-                var names = window.location.search.substr(1).split(',');
-                var initialReviewers = _(names).map(function(name) { return {name: name, active: true} });
-                codeReview = this.codeRewiew = new CodeReviews(initialReviewers);
+
+            function init(firebase, reviewers) {
+                codeReview = this.codeReview = new CodeReviews(firebase);
                 codeReview.on('change', renderPage);
                 codeReview.on('generate', renderGenerate);
                 codeReview.on('error', renderErrorMessage);
-                renderPage();
                 $('#reshuffle').click(function(){
                     codeReview.generate();
                 });
@@ -248,8 +263,14 @@
                     codeReview.addReviewer(name);
                 });
                 $('.btn').each(function(i, e) {
-                    $(e).tooltip()});
+                    $(e).tooltip();
                 });
+
+            }
+
+            $(function(){
+                init(new Firebase('code-review.firebaseio.com'));
+            });
         }).call(this);
         </script>
     </head>
