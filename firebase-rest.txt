@@ -1,0 +1,4 @@
+# Fetch security
+curl https://APP.firebaseIO.com/.settings/rules/.json?auth=FIREBASE_SECRET
+# Update security
+curl -X PUT -d '{ "rules": { ".read": true } }' https://APP.firebaseIO.com/.settings/rules.json?auth=FIREBASE_SECRET

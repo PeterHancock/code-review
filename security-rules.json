@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "users": {
+      "$userId" : {
+        ".read": "$userId == auth.id",
+        "messages":{
+          ".write": "auth != null",
+          "$message": {
+            ".validate": "newData.hasChildren(['id', 'message', 'email'])",
+            "id": {
+              ".validate": "newData.isString() && newData.val() == auth.id"
+            },
+            "email": {
+              ".validate": "newData.isString() && newData.val() == auth.email"
+            },
+            "message": {
+              ".validate": "newData.isString()"
+            },
+            "$others": {
+              ".validate": "$others == null"
+            }
+          }
+        },
+        "$private": {
+          ".write": "$userId == auth.id"
+        }
+      }
+    }
+  }
+}
