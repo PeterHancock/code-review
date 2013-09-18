@@ -17,7 +17,7 @@
         (function(){
             var global = this;
             $(function(){
-                var codeReviewRef = new Firebase('code-review-auth.firebaseio.com');
+                var codeReviewRef = global.app = new Firebase('code-review-auth.firebaseio.com');
                 var auth = global.auth = new FirebaseSimpleLogin(codeReviewRef, function(error, user) {
                     console.log('auth', error, user);
                     if(!error) {
