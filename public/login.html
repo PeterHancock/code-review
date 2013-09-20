@@ -42,13 +42,18 @@
                 });
                
                 function render(user) {
-                    console.log('welcome ', user.id, user.email, user.provider);
                     var userNode = codeReviewRef.child('users/' + user.id);
+                    userNode.child('private').on('value', function(snapshot) {
+                        var privateInfo = snapshot.val();
+                        console.log('welcome ', user.id, user.email, user.provider, privateInfo.name, privateInfo.uuid);
+                    });
                     userNode.child('messages').on('value', function(snapshot) {
-                        console.log('Messages:');
+                        if(snapshot.val()) {
+                            console.log('Messages:');
+                        }
                         snapshot.forEach(function(snapshot){
                             var message = snapshot.val();
-                            console.log('From:', message.email, 'Message:', message.message);
+                            console.log('From:', message.fromEmail, 'Message:', message.message);
                         });
                     });
                 } 

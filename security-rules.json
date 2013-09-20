@@ -2,6 +2,10 @@
   "rules": {
     "users": {
       "$userId" : {
+        "private": {
+          ".read": "$userId == auth.id",
+          ".write": "$userId == auth.id"
+        },
         "projects": {
           "$project": {
             "data": {
@@ -18,12 +22,15 @@
           ".read": "$userId == auth.id",
           "$message": {
           ".write": "auth != null",
-          ".validate": "newData.hasChildren(['id', 'message', 'email'])",
-            "id": {
-              ".validate": "newData.isString() && newData.val() == auth.id"
+          ".validate": "newData.hasChildren(['fromId', 'fromEmail', 'toUUID', 'message'])",
+            "fromId": {
+              ".validate": "newData.val() == auth.id"
             },
-            "email": {
-              ".validate": "newData.isString() && newData.val() == auth.email"
+            "toUUID": {
+              ".validate": "newData.val() == root.child('users/' + $userId + '/private/uuid').val()"
+            },
+            "fromEmail": {
+              ".validate": "newData.val() == auth.email"
             },
             "message": {
               ".validate": "newData.isString()"
