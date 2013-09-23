@@ -2,27 +2,19 @@
   "rules": {
     "users": {
       "$userId" : {
-        "private": {
-          ".read": "$userId == auth.id",
-          ".write": "$userId == auth.id"
-        },
+        ".read": "$userId == auth.id",
+        ".write": "$userId == auth.id",
         "projects": {
           "$project": {
-            ".write": "$userId == auth.id || root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/write').exists()",
-            ".validate": "!data.exists()",
             "data": {
-              ".read": "$userId == auth.id || root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/read').exists()"
-            },
-            "users": {
-              ".read": "$userId == auth.id",
-              ".validate": "$userId == auth.id"
+              ".write": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/write').exists()",
+              ".read": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/read').exists()"  
             }
           }
         },
         "messages":{
-          ".read": "$userId == auth.id",
+          ".write": "auth != null",
           "$message": {
-            ".write": "auth != null",
             ".validate": "newData.hasChildren(['fromId', 'fromEmail', 'fromUUID', 'toUUID', 'message']) && !data.exists()",
             "fromId": {
               ".validate": "newData.val() == auth.id"
@@ -40,7 +32,7 @@
               ".validate": "true"
             },
             "$others": {
-              ".validate": "$others == null"
+              ".validate": "false"
             }
           }
         }
