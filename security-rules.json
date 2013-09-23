@@ -8,32 +8,36 @@
         },
         "projects": {
           "$project": {
+            ".write": "$userId == auth.id || root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/write').exists()",
+            ".validate": "!data.exists()",
             "data": {
-              ".read": "$userId == auth.id || root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/read').exists()",
-              ".write": "$userId == auth.id || root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/write').exists()"
+              ".read": "$userId == auth.id || root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + '/read').exists()"
             },
             "users": {
               ".read": "$userId == auth.id",
-              ".write": "$userId == auth.id"
+              ".validate": "$userId == auth.id"
             }
           }
         },
         "messages":{
           ".read": "$userId == auth.id",
           "$message": {
-          ".write": "auth != null",
-          ".validate": "newData.hasChildren(['fromId', 'fromEmail', 'toUUID', 'message'])",
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['fromId', 'fromEmail', 'fromUUID', 'toUUID', 'message']) && !data.exists()",
             "fromId": {
               ".validate": "newData.val() == auth.id"
-            },
-            "toUUID": {
-              ".validate": "newData.val() == root.child('users/' + $userId + '/private/uuid').val()"
             },
             "fromEmail": {
               ".validate": "newData.val() == auth.email"
             },
-            "message": {
+            "fromUUID": {
               ".validate": "newData.isString()"
+            },
+            "toUUID": {
+              ".validate": "newData.val() == root.child('users/' + $userId + '/private/uuid').val()"
+            },
+            "message": {
+              ".validate": "true"
             },
             "$others": {
               ".validate": "$others == null"
