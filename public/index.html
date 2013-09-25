@@ -14,7 +14,7 @@
         <script type='text/javascript' src='//cdn.firebase.com/v0/firebase.js'></script>
         <script type='text/javascript' src='//cdn.firebase.com/v0/firebase-simple-login.js'> </script>
         <script type='text/javascript' src='js/login.js'> </script>
-         <script type='text/javascript' src='js/messaging.js'> </script>
+        <script type='text/javascript' src='js/messaging.js'> </script>
 
         <script>
         (function(){
@@ -32,6 +32,7 @@
                     $('#main').empty();
                     authService.logout();
                 }));
+                var userNode = firebaseRef.child('users/' + user.id);
                 userNode.child('private').on('value', function(snapshot) {
                     var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
                     var render = Render[fragment.action] || Render.home;
@@ -44,7 +45,7 @@
             }
 
             function accept(user,  message) {
-                messagingService.reply(message, {
+                messageService.reply(message, {
                             type: "accept",
                             project : message.message.project
                  });
@@ -62,14 +63,18 @@
                                 var message = snapshot.val();
                                 switch(message.message.type) {
                                     case 'subscribe':
-                                        $('<a> Let ' + message.fromEmail + ' join ' + message.message.project + '</a>').appendTo('#main .messages')
-                                        .click(function(e){
-                                            e.preventDefault();
-                                            accept(user, message);
-                                        });
+                                        $('<a> Let ' + message.from.email + ' join ' + message.message.project + '</a>').appendTo('#main .messages')
+                                            .click(_.once(function(e){
+                                                e.preventDefault();
+                                                accept(user, message);
+                                                snapshot.ref().remove();
+
+                                            }));
                                         break;
                                     case 'accept':
-                                        firebaseRef.child('users/' + user.id + '/private/my-projects').push(message.message.project);
+                                        firebaseRef.child('users/' + user.id + '/private/subscribed-projects').push(message.message.project);
+                                        snapshot.ref().remove();
+                                        break;
                                 }
                                 if(message.message.type === 'subscribe') {
 
@@ -80,11 +85,18 @@
                             });
                         });
                         $('#main .my-projects').empty();
-                        userNode.child('private/my-projects').on('child_added', function(snapshot) {
+                        userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<div>' + project + '</div>');
+                            $('#main .my-projects').append('<div>' + project.name + '</div>');
 
                         });
+                        $('#main .c-projects').empty();
+                        userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
+                            var project = snapshot.val();
+                            $('#main .subscribed-projects').append('<div>' + project + '</div>');
+
+                        });
+
                     });
                 },
                 project: function(user, context) {

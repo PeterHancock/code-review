@@ -3,7 +3,7 @@
         this._firebaseRef = firebaseRef;
         this._user = user;
     };
-    _(MessageService.protortype).extend({
+    _(MessageService.prototype).extend({
         send: function(to, body) {
             var message = {
                 from: {
