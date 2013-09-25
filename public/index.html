@@ -8,17 +8,20 @@
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
         <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery.ba-bbq/1.2.1/jquery.ba-bbq.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/0.7.2/mustache.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
         <script type='text/javascript' src='//cdn.firebase.com/v0/firebase.js'></script>
         <script type='text/javascript' src='//cdn.firebase.com/v0/firebase-simple-login.js'> </script>
         <script type='text/javascript' src='js/login.js'> </script>
+         <script type='text/javascript' src='js/messaging.js'> </script>
 
         <script>
         (function(){
             var global = this;
             var firebaseRef;
             var authService;
+            var messageService;
             var events = _({}).extend(Backbone.Events);
             var errorHandler = function(error, msg) {
                 events.trigger('error', error, msg);
@@ -29,35 +32,75 @@
                     $('#main').empty();
                     authService.logout();
                 }));
-                renderHome(user);
+                userNode.child('private').on('value', function(snapshot) {
+                    var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
+                    var render = Render[fragment.action] || Render.home;
+                    var userNode = firebaseRef.child('users/' + user.id);
+                    var privateInfo = snapshot.val();
+                    _(user).extend(privateInfo);
+                    messageService = new MessageService(firebaseRef, user);
+                    render.call(this, user, fragment);
+                });
             }
-            function renderHome(user) {
-                var userNode = firebaseRef.child('users/' + user.id);
-                $('#main').empty().load('html/home/info.html', function(){
-                        userNode.child('private').on('value', function(snapshot) {
-                            var privateInfo = snapshot.val();
-                            $('.welcome').text('Welcome ' + user.id +user.email + user.provider + privateInfo.name + privateInfo.uuid);
-                        });
-                        $('#main .messages').empty()
+
+            function accept(user,  message) {
+                messagingService.reply(message, {
+                            type: "accept",
+                            project : message.message.project
+                 });
+                firebaseRef.child('users/' + user.id + '/projects/' + message.message.project + '/users/' + message.fromId + '/read').set(true);
+            }
+
+            var Render = {
+                home: function(user) {
+                    var userNode = firebaseRef.child('users/' + user.id);
+                    $('#main').empty().load('html/home/info.html', function(){
+                        $('.welcome').text('Welcome ' + user.id +user.email + user.provider + user.name + user.uuid);
+                        $('#main .messages').empty();
                         userNode.child('messages').on('value', function(snapshot) {
                             snapshot.forEach(function(snapshot){
                                 var message = snapshot.val();
+                                switch(message.message.type) {
+                                    case 'subscribe':
+                                        $('<a> Let ' + message.fromEmail + ' join ' + message.message.project + '</a>').appendTo('#main .messages')
+                                        .click(function(e){
+                                            e.preventDefault();
+                                            accept(user, message);
+                                        });
+                                        break;
+                                    case 'accept':
+                                        firebaseRef.child('users/' + user.id + '/private/my-projects').push(message.message.project);
+                                }
                                 if(message.message.type === 'subscribe') {
-                                    $('#main .messages').append('<a> Let ' + message.fromEmail + ' join ' + message.message.project + '</a>');
+
                                 } else {
                                     $('#main .messages').append('<div> From:' + message.fromEmail + 'Message:' + message.message + '</div>');
                                 }
+
                             });
                         });
                         $('#main .my-projects').empty();
                         userNode.child('private/my-projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
                             $('#main .my-projects').append('<div>' + project + '</div>');
-                           
+
                         });
                     });
-                
+                },
+                project: function(user, context) {
+                    firebaseRef.child('users/' + context.id + '/projects/' + context.name + '/data').on('value', function(s){
+                        console.log(s.val());
+                    })
+                },
+                /*
+                * Invitation to subscribe to a project
+                */
+                invite: function(user, context) {
+                    messageService.send(context, { type: "subscribe", project: context.project});
+                    Render.home(user, context);
+                }
             }
+
             function renderAnon() {
                 events.trigger('ready', 'Anon');
                 $('#login').text('Login').click(_.once(function(e){
@@ -65,7 +108,7 @@
                     authService.login();
                 }));
             }
-            
+
             function log () {
                 console.log.apply(console, arguments);
             }
