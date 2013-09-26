@@ -26,10 +26,28 @@
             var errorHandler = function(error, msg) {
                 events.trigger('error', error, msg);
             };
+
+            $(function(){
+                firebaseRef = global.app = new Firebase('code-review-auth.firebaseio.com');
+                authService = AuthService('login-panel', firebaseRef);
+                authService.on('auth-error', function(error){
+                    errorHandler(error, 'Authentication Error');
+                });
+                authService
+                    .on('auth-user', render)
+                    .on('auth-anon', renderAnon)
+                    .on('error', log);
+                events.on('ready', function(state){
+                    log('ready', state);
+                });
+                authService.authenticate();
+            });
+
             function render(user) {
                 events.trigger('ready', 'User', user);
                 $('#login').text('Logout').click(_.once(function(){
                     $('#main').empty();
+                    $('.welcom').text('Welcome!');
                     authService.logout();
                 }));
                 var userNode = firebaseRef.child('users/' + user.id);
@@ -56,47 +74,40 @@
                 home: function(user) {
                     var userNode = firebaseRef.child('users/' + user.id);
                     $('#main').empty().load('html/home/info.html', function(){
-                        $('.welcome').text('Welcome ' + user.id +user.email + user.provider + user.name + user.uuid);
-                        $('#main .messages').empty();
-                        userNode.child('messages').on('value', function(snapshot) {
-                            snapshot.forEach(function(snapshot){
-                                var message = snapshot.val();
-                                switch(message.message.type) {
-                                    case 'subscribe':
-                                        $('<a> Let ' + message.from.email + ' join ' + message.message.project + '</a>').appendTo('#main .messages')
-                                            .click(_.once(function(e){
-                                                e.preventDefault();
-                                                accept(user, message);
-                                                snapshot.ref().remove();
-
-                                            }));
-                                        break;
-                                    case 'accept':
-                                        firebaseRef.child('users/' + user.id + '/private/subscribed-projects').push(message.message.project);
-                                        snapshot.ref().remove();
-                                        break;
-                                }
-                                if(message.message.type === 'subscribe') {
-
-                                } else {
-                                    $('#main .messages').append('<div> From:' + message.fromEmail + 'Message:' + message.message + '</div>');
-                                }
-
-                            });
+                        $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
+                        messageService.on('message_added', function(message){
+                            switch(message.message.type) {
+                                case 'subscribe':
+                                    $('<p><a> Let ' + message.from.email + ' join ' + message.message.project + '</a></p>').appendTo('#main .messages')
+                                        .click(_.once(function(e){
+                                            e.preventDefault();
+                                            accept(user, message);
+                                            $(this).remove();
+                                            message.remove();
+                                        }));
+                                    break;
+                                case 'accept':
+                                    firebaseRef.child('users/' + user.id + '/private/subscribed-projects').push(message.message.project);
+                                    message.remove();
+                                    break;
+                                default:
+                                    $('#main .messages').append('<p> From:' + message.fromEmail + 'Message:' + message.message + '</p>');
+                            }
                         });
+
                         $('#main .my-projects').empty();
                         userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<div>' + project.name + '</div>');
+                            $('#main .my-projects').append('<p>' + project.name + '</p>');
 
                         });
-                        $('#main .c-projects').empty();
+                        $('#main .subscribed-projects').empty();
                         userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .subscribed-projects').append('<div>' + project + '</div>');
+                            $('#main .subscribed-projects').append('<p>' + project + '</p>');
 
                         });
-
+                        messageService.listen();
                     });
                 },
                 project: function(user, context) {
@@ -125,28 +136,32 @@
                 console.log.apply(console, arguments);
             }
 
-            $(function(){
-                firebaseRef = global.app = new Firebase('code-review-auth.firebaseio.com');
-                authService = AuthService('login-panel', firebaseRef);
-                authService.on('auth-error', function(error){
-                    errorHandler(error, 'Authentication Error');
-                });
-                authService
-                    .on('auth-user', render)
-                    .on('auth-anon', renderAnon)
-                    .on('error', log);
-                events.on('ready', function(state){
-                    log('ready', state);
-                });
-                authService.authenticate();
-            });
         }).call(this);
         </script>
     </head>
     <body>
+    <nav class="navbar navbar-default" role="navigation">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="#">Code Review</a>
+      </div>
+
+      <!-- Collect the nav links, forms, and other content for toggling -->
+      <div class="collapse navbar-collapse navbar-ex1-collapse">
+        <ul class="nav navbar-nav navbar-right">
+        <li><p class="navbar-text welcome">Welcome!</p></li>
+        <li><a id="login"></a></li>
+        </ul>
+      </div><!-- /.navbar-collapse -->
+    </nav>
     <div class="container">
-        <span class="welcome">Welcome!</span>
-        <a id="login">Login</a>
+
         <div id="main">Welcome to Code Review</div>
         <div id="login-panel"></div>
     </div>
