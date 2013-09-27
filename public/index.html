@@ -123,7 +123,7 @@
                         $('#main .my-projects').empty();
                         userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<p><a href="#action=project&project-id=' + project.id + '&id=' + user.id + '&provider=' + user.provider +'">' + project.name + '</a></p>');
+                            $('#main .my-projects').append('<p><a href="#action=project&projectId=' + snapshot.name() + '&id=' + user.id + '&provider=' + user.provider +'">' + project.details.name + '</a></p>');
 
                         });
                         $('#main .subscribed-projects').empty();
