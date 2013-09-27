@@ -7,7 +7,7 @@
     _(MessageService.prototype).extend(Backbone.Events);
     _(MessageService.prototype).extend({
         listen: function() {
-            var messagesRef = this._firebaseRef.child('users/' + this._user.id + '/messages');
+            var messagesRef = this._firebaseRef.getUserRef(this._user).child('messages');
             messagesRef.on('child_added', this.handleMessageAdded);
             messagesRef.on('child_removed', this.handleMessageRemoved);
         },
@@ -16,12 +16,13 @@
                 from: {
                     id: this._user.id,
                     uuid: this._user.uuid,
-                    email : this._user.email
+                    email: this._user.email,
+                    provider: this._user.provider
                 },
                 uuid: to.uuid,
                 message: body
             };
-            this._firebaseRef.child('users/' + to.id + '/messages').push(message);
+            this._firebaseRef.getUserRef(to).child('messages').push(message);
         },
         reply: function(message, body) {
             this.send(message.from, body);
