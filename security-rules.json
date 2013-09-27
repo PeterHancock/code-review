@@ -12,24 +12,30 @@
             }
           }
         },
-        "messages":{
+        "messages": {
           ".write": "auth != null",
           "$message": {
-            ".validate": "newData.hasChildren(['fromId', 'fromEmail', 'fromUUID', 'toUUID', 'message']) && !data.exists()",
-            "fromId": {
-              ".validate": "newData.val() == auth.id"
+            ".validate": "newData.hasChildren(['from', 'uuid',  'message']) && !data.exists()",
+            "from": {
+              ".validate": "newData.hasChildren(['id', 'uuid',  'email']) && !data.exists()",
+              "email": {
+                ".validate": "newData.val() == auth.email"
+              },
+              "id": {
+                ".validate": "newData.val() == auth.id"
+              },
+              "uuid": {
+                ".validate": "newData.isString()"
+              }
             },
-            "fromEmail": {
-              ".validate": "newData.val() == auth.email"
-            },
-            "fromUUID": {
-              ".validate": "newData.isString()"
-            },
-            "toUUID": {
+            "uuid": {
               ".validate": "newData.val() == root.child('users/' + $userId + '/private/uuid').val()"
             },
             "message": {
-              ".validate": "true"
+              ".validate": "newData.hasChildren(['type']) && !data.exists()",
+              "type": {
+                ".validate": "!data.exists()"
+              }
             },
             "$others": {
               ".validate": "false"
