@@ -15,6 +15,8 @@
         <script type='text/javascript' src='//cdn.firebase.com/v0/firebase-simple-login.js'> </script>
         <script type='text/javascript' src='js/login.js'> </script>
         <script type='text/javascript' src='js/messaging.js'> </script>
+        <script src="js/shuffle.js"></script>
+        <script src="js/project.js"></script>
 
         <script>
         (function(){
@@ -47,7 +49,7 @@
                 events.trigger('ready', 'User', user);
                 $('#login').text('Logout').click(_.once(function(){
                     $('#main').empty();
-                    $('.welcom').text('Welcome!');
+                    $('.welcome').text('Welcome!');
                     authService.logout();
                 }));
                 var userNode = firebaseRef.child('users/' + user.id);
@@ -57,6 +59,7 @@
                     var userNode = firebaseRef.child('users/' + user.id);
                     var privateInfo = snapshot.val();
                     _(user).extend(privateInfo);
+                    $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
                     messageService = new MessageService(firebaseRef, user);
                     render.call(this, user, fragment);
                 });
@@ -74,7 +77,6 @@
                 home: function(user) {
                     var userNode = firebaseRef.child('users/' + user.id);
                     $('#main').empty().load('html/home/info.html', function(){
-                        $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
                         messageService.on('message_added', function(message){
                             switch(message.message.type) {
                                 case 'subscribe':
@@ -98,7 +100,7 @@
                         $('#main .my-projects').empty();
                         userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<p>' + project.name + '</p>');
+                            $('#main .my-projects').append('<p><a href="#action=project&name=' + project.name + '&id=' + user.id + '">' + project.name + '</a></p>');
 
                         });
                         $('#main .subscribed-projects').empty();
@@ -111,9 +113,7 @@
                     });
                 },
                 project: function(user, context) {
-                    firebaseRef.child('users/' + context.id + '/projects/' + context.name + '/data').on('value', function(s){
-                        console.log(s.val());
-                    })
+                    window.renderProject(firebaseRef.child('users/' + context.id + '/projects/' + context.name + '/data'), '#main', context.name);
                 },
                 /*
                 * Invitation to subscribe to a project
@@ -156,12 +156,11 @@
       <div class="collapse navbar-collapse navbar-ex1-collapse">
         <ul class="nav navbar-nav navbar-right">
         <li><p class="navbar-text welcome">Welcome!</p></li>
-        <li><a id="login"></a></li>
+        <li><a id="login">Login</a></li>
         </ul>
       </div><!-- /.navbar-collapse -->
     </nav>
     <div class="container">
-
         <div id="main">Welcome to Code Review</div>
         <div id="login-panel"></div>
     </div>
