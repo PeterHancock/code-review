@@ -69,6 +69,9 @@
     }
    
     function reduceClosureCost(items, allCosts) {
+        if(items.length < 3) {
+            return items;
+        }
         var initial = _(items).initial();
         var last = _(initial).last();
         var cost = (allCosts[_(initial).last()][last] || 0) + (allCosts[last][_(initial).head()] || 0);
