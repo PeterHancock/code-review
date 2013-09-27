@@ -6,7 +6,7 @@
         this._id = id;
         this._firebaseRef = firebaseRef;
     };
-    
+
     _(AuthService.prototype).extend(Backbone.Events);
 
     AuthService.prototype.authenticate = function() {
@@ -30,7 +30,7 @@
     AuthService.prototype.logout = function() {
         this._auth.logout();
     };
-    
+
     AuthService.prototype.login = function() {
         var scope = this;
         var loginDialog = $('#' + this._id).empty();
@@ -38,7 +38,7 @@
             var modal = scope._modal = $('#' + scope._id + ' .login');
             modal.modal('show');
             $('#github').click(function(e){
-                e.preventDefault(); 
+                e.preventDefault();
                 modal.modal('hide');
                 scope._auth.login('github', {rememberMe:true});
             });
@@ -59,7 +59,7 @@
             loginDialog.show();
         });
     }
-    
+
     AuthService.prototype._create = function(email, password, name){
         var scope = this;
         this._created = {name: name};

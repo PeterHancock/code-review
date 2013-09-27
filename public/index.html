@@ -43,7 +43,7 @@
                     .on('auth-anon', renderAnon)
                     .on('auth-error', log)
                     .on('user-created-error', log);
-                    
+
                 events.on('ready', function(state){
                     log('ready', state);
                 });
@@ -82,7 +82,9 @@
                 messageService.reply(message, {
                             type: "accept",
                             project : {
-                                name: message.message.project, 
+                                id: message.message.project,
+                                name: message.message.name,
+                                org: message.message.org,
                                 user: {id: user.id, provider: user.provider}
                             }
                  });
@@ -96,40 +98,45 @@
                         messageService.on('message_added', function(message){
                             switch(message.message.type) {
                                 case 'subscribe':
-                                    $('<p><a> Let ' + message.from.email + ' join ' + message.message.project + '</a></p>').appendTo('#main .messages')
-                                        .click(_.once(function(e){
-                                            e.preventDefault();
-                                            accept(user, message);
-                                            $(this).remove();
-                                            message.remove();
-                                        }));
+                                    userNode.child('projects/' + message.message.project + '/details').on('value', function(s){
+                                        var projectDetails = s.val();
+                                        _(message.message).extend(projectDetails);
+                                        $('<p><a> Let ' + message.from.email + ' join ' + projectDetails.name + '</a></p>').appendTo('#main .messages')
+                                            .click(_.once(function(e){
+                                                e.preventDefault();
+                                                accept(user, message);
+                                                $(this).remove();
+                                                message.remove();
+                                            }));
+                                    });
+
                                     break;
                                 case 'accept':
                                      firebaseRef.getUserRef(user).child('private/subscribed-projects').push(message.message.project);
                                     message.remove();
                                     break;
                                 default:
-                                    $('#main .messages').append('<p> From:' + message.fromEmail + 'Message:' + message.message + '</p>');
+                                    $('#main .messages').append('<p> From:' + message.from.email + 'Message:' + message.message + '</p>');
                             }
                         });
 
                         $('#main .my-projects').empty();
                         userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<p><a href="#action=project&name=' + project.name + '&id=' + user.id + '&provider=' + user.provider +'">' + project.name + '</a></p>');
+                            $('#main .my-projects').append('<p><a href="#action=project&project-id=' + project.id + '&id=' + user.id + '&provider=' + user.provider +'">' + project.name + '</a></p>');
 
                         });
                         $('#main .subscribed-projects').empty();
                         userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .subscribed-projects').append('<p><a href="#action=project&name=' + project.name + '&id=' + project.user.id + '&provider=' + project.user.provider +'">' + project.name + '</a></p>');
+                            $('#main .subscribed-projects').append('<p><a href="#action=project&projectId=' + project.id + '&id=' + project.user.id + '&provider=' + project.user.provider +'">' + project.name + '</a></p>');
 
                         });
                         messageService.listen();
                     });
                 },
                 project: function(user, context) {
-                    window.renderProject(firebaseRef.getUserRef(context).child('projects/' + context.name + '/data'), '#main', context.name);
+                    window.renderProject(firebaseRef.getUserRef(context).child('projects/' + context.projectId + '/data'), '#main', context.name);
                 },
                 /*
                 * Invitation to subscribe to a project

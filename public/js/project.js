@@ -150,7 +150,7 @@
                         codeReview.addConstraint(reviewer.name, reviewee);
                     }
                     codeReview.trigger('change');
-                    
+
                 });
                 _.chain(others).pluck('name').each(function(name) {
                     devButton.find('.pin-to-' + name).click(function(e) {
@@ -253,7 +253,7 @@
             });
         });
     }
-    
+
     this.renderProject = init;
-    
+
 }).call(this);

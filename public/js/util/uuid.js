@@ -4,11 +4,11 @@
                  .toString(16)
                  .substring(1);
     };
-    
+
     function guid() {
       return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
              s4() + '-' + s4() + s4() + s4();
     };
     window.guid = guid;
-    
+
 }).call(this);
