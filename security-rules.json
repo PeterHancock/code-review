@@ -9,6 +9,9 @@
             "data": {
               ".write": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + ':' + auth.provider + '/write').exists()",
               ".read": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + ':' + auth.provider +'/read').exists()"  
+            },
+            "details": {
+               ".read": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + ':' + auth.provider +'/read').exists()"  
             }
           }
         },
