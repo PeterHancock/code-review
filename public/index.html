@@ -123,20 +123,20 @@
                         $('#main .my-projects').empty();
                         userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<p><a href="#action=project&projectId=' + snapshot.name() + '&id=' + user.id + '&provider=' + user.provider +'">' + project.details.name + '</a></p>');
+                            $('#main .my-projects').append('<p><a href="#action=project&projectId=' + snapshot.name() + '&id=' + user.id + '&provider=' + user.provider +'">' + project.details.org + '/' + project.details.name + '</a></p>');
 
                         });
                         $('#main .subscribed-projects').empty();
                         userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .subscribed-projects').append('<p><a href="#action=project&projectId=' + project.id + '&id=' + project.user.id + '&provider=' + project.user.provider +'">' + project.name + '</a></p>');
+                            $('#main .subscribed-projects').append('<p><a href="#action=project&projectId=' + project.id + '&id=' + project.user.id + '&provider=' + project.user.provider +'">' + project.org + '/' + project.name + '</a></p>');
 
                         });
                         messageService.listen();
                     });
                 },
                 project: function(user, context) {
-                    window.renderProject(firebaseRef.getUserRef(context).child('projects/' + context.projectId + '/data'), '#main', context.name);
+                    window.renderProject(firebaseRef.getUserRef(context).child('projects/' + context.projectId), '#main', context.name);
                 },
                 /*
                 * Invitation to subscribe to a project

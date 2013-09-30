@@ -1,19 +1,21 @@
 (function(){
     var CodeReviews = function(firebase) {
-        this._firebase = firebase;
+        this._firebase = firebase.child('data');
         this._constraints = {};
         var scope = this;
         var broadcastChange = _.after(2, function(){
             scope.trigger('change');
         });
-        firebase.child('reviewers').on('value', function(snapshot) {
-            scope._reviewers = _(snapshot.val()).values() || [];
-            scope._sortReviewers();
-            broadcastChange();
+        firebase.child('details').on('value', function(snapshot) {
+            var details = snapshot.val();
+             $('.project-name').text(details.org + '/' + details.name);
         });
-        firebase.child('history').on('value', function(snapshot) {
-            scope._history = _(snapshot.val()).values().reverse() || [];
-            broadcastChange();
+        this._firebase.on('value', function(snapshot) {
+            var data = snapshot.val();
+            scope._reviewers = _(data.reviewers).values() || [];
+            scope._history = _(data.history).values().reverse() || [];
+            scope._sortReviewers();
+            scope.trigger('change');
         });
     };
 
