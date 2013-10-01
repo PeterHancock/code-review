@@ -1,16 +1,16 @@
 (function(){
     var CodeReviews = function(firebase) {
-        this._firebase = firebase.child('data');
+        this._projectRef = firebase;
+        this._projectDataRef = firebase.child('data');
         this._constraints = {};
+    };
+    CodeReviews.prototype.load = function() {
         var scope = this;
-        var broadcastChange = _.after(2, function(){
-            scope.trigger('change');
-        });
-        firebase.child('details').on('value', function(snapshot) {
+        this._projectRef.child('details').on('value', function(snapshot) {
             var details = snapshot.val();
              $('.project-name').text(details.org + '/' + details.name);
         });
-        this._firebase.on('value', function(snapshot) {
+        this._projectDataRef.on('value', function(snapshot) {
             var data = snapshot.val();
             scope._reviewers = _(data.reviewers).values() || [];
             scope._history = _(data.history).values().reverse() || [];
@@ -18,7 +18,6 @@
             scope.trigger('change');
         });
     };
-
     (function(){
 
         this.getHistory = function() {
@@ -38,7 +37,7 @@
                 var gen = this._generated;
                 this._generated = null;
                 this._current = 'placeholder'; //TODO need a better race condition guard!
-                this._current = this._firebase.child('history').push(gen);
+                this._current = this._projectDataRef.child('history').push(gen);
             }
         }
 
@@ -95,7 +94,7 @@
                 this.trigger('error', message);
                 throw message;
             }
-            this._firebase.child('reviewers').push({name: name, active: true});
+            this._projectDataRef.child('reviewers').push({name: name, active: true});
         }
 
         this.codeReviewTable = function() {
@@ -253,6 +252,7 @@
             $('.btn').each(function(i, e) {
                 $(e).tooltip();
             });
+            codeReview.load();
         });
     }
 

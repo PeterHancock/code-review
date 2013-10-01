@@ -26,6 +26,7 @@
             var firebaseRef;
             var authService;
             var messageService;
+            var user;
             var events = _({}).extend(Backbone.Events);
             var errorHandler = function(error, msg) {
                 events.trigger('error', error, msg);
@@ -38,7 +39,7 @@
                     errorHandler(error, 'Authentication Error');
                 });
                 authService
-                    .on('auth-user', render)
+                    .on('auth-user', renderApp)
                     .on('auth-user-created', userCreated)
                     .on('auth-anon', renderAnon)
                     .on('auth-error', log)
@@ -55,11 +56,13 @@
                 created.uuid = guid();
                 userNode.child('private').set({name: created.name, uuid: created.uuid});
                 _(user).extend(created);
-                render(user);
+                renderPage(user);
             }
 
-            function render(user) {
+            function renderApp(u) {
+                user = u;
                 events.trigger('ready', 'User', user);
+
                 $('#login').text('Logout').click(_.once(function(){
                     $('#main').empty();
                     $('.welcome').text('Welcome!');
@@ -67,16 +70,27 @@
                 }));
                 var userNode = firebaseRef.getUserRef(user);
                 userNode.child('private').on('value', function(snapshot) {
-                    var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
-                    var render = Render[fragment.action] || Render.home;
-                    var userNode = firebaseRef.getUserRef(user);
                     var privateInfo = snapshot.val();
                     _(user).extend(privateInfo);
                     $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
                     messageService = new MessageService(firebaseRef, user);
-                    render.call(this, user, fragment);
+                    renderPage();
                 });
             }
+
+            function renderPage() {
+                 var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
+                 var render = Render[fragment.action] || Render.home;
+                 render.call(this, fragment);
+                 $('a.fragnav').click(fragnavClick);
+            }
+
+            function fragnavClick(e) {
+                location.hash = '#' + this.href.split('#')[1];
+                renderPage();
+                e.preventDefault();
+            }
+
 
             function accept(user,  message) {
                 messageService.reply(message, {
@@ -92,7 +106,7 @@
             }
 
             var Render = {
-                home: function(user) {
+                home: function() {
                     var userNode = firebaseRef.getUserRef(user);
                     $('#main').empty().load('html/home/info.html', function(){
                         messageService.on('message_added', function(message){
@@ -123,28 +137,41 @@
                         $('#main .my-projects').empty();
                         userNode.child('projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .my-projects').append('<p><a href="#action=project&projectId=' + snapshot.name() + '&id=' + user.id + '&provider=' + user.provider +'">' + project.details.org + '/' + project.details.name + '</a></p>');
+                            var projectDetail = {
+                                id: snapshot.name(),
+                                org: project.details.org,
+                                name: project.details.name
+                            };
+                            $('<p>').append(projectLink(projectDetail, user)).appendTo($('#main .my-projects'));
 
                         });
                         $('#main .subscribed-projects').empty();
                         userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
                             var project = snapshot.val();
-                            $('#main .subscribed-projects').append('<p><a href="#action=project&projectId=' + project.id + '&id=' + project.user.id + '&provider=' + project.user.provider +'">' + project.org + '/' + project.name + '</a></p>');
+                            $('<p>').append(projectLink(project, project.user)).appendTo($('#main .subscribed-projects'));
 
                         });
                         messageService.listen();
                     });
                 },
-                project: function(user, context) {
+                project: function(context) {
                     window.renderProject(firebaseRef.getUserRef(context).child('projects/' + context.projectId), '#main', context.name);
                 },
                 /*
                 * Invitation to subscribe to a project
                 */
-                invite: function(user, context) {
+                invite: function(context) {
                     messageService.send(context, { type: "subscribe", project: context.project});
                     Render.home(user, context);
                 }
+            }
+
+            function projectLink(project, user){
+                return appLink('<a class="fragnav" href="#action=project&projectId=' + project.id + '&id=' + user.id + '&provider=' + user.provider +'">' + project.org + '/' + project.name + '</a>');
+            }
+
+            function appLink(markup) {
+                return $(markup).click(fragnavClick);
             }
 
             function renderAnon() {
@@ -172,7 +199,7 @@
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="#">Code Review</a>
+        <a class="navbar-brand fragnav" href="#">Code Review</a>
       </div>
 
       <!-- Collect the nav links, forms, and other content for toggling -->
