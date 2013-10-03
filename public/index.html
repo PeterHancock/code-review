@@ -38,7 +38,7 @@
                     * Invitation to subscribe to a project
                     */
                     invite: function(context) {
-                        this._messageService.send(context, { type: "subscribe", project: context.project});
+                        this._messageService.send(context, { type: "subscribe", project: context.projectId});
                         location.hash = '';
                         this.renderMain();
                     }
