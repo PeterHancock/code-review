@@ -17,31 +17,104 @@
         <script type='text/javascript' src='js/FirebaseService.js'> </script>
         <script type='text/javascript' src='js/login.js'> </script>
         <script type='text/javascript' src='js/messaging.js'> </script>
+        <script src="js/home.js"></script>
         <script src="js/shuffle.js"></script>
         <script src="js/project.js"></script>
 
         <script>
         (function(){
             var global = this;
-            var firebaseRef;
-            var authService;
-            var messageService;
-            var user;
-            var events = _({}).extend(Backbone.Events);
-            var errorHandler = function(error, msg) {
-                events.trigger('error', error, msg);
-            };
+            var app;
 
-            $(function(){
-                firebaseRef = global.app = new FirebaseService('code-review-auth');
-                authService = AuthService('login-panel', firebaseRef);
+            var AppPrototype = {
+                Pages: {
+                    home: function(){
+                        window.renderHome(this, $('#main'))
+                    },
+                    project: function(context) {
+                        window.renderProject(this._firebaseRef.getUserRef(context).child('projects/' + context.projectId), '#main', context.name);
+                    },
+                    /*
+                    * Invitation to subscribe to a project
+                    */
+                    invite: function(context) {
+                        this._messageService.send(context, { type: "subscribe", project: context.project});
+                        location.hash = '';
+                        this.renderMain();
+                    }
+                },
+
+                renderAnon: function() {
+                    var scope = this;
+                    this._events.trigger('ready', 'Anon');
+                    $('#login').text('Login').click(function(e){
+                        e.preventDefault();
+                        scope._authService.login();
+                    });
+                },
+                renderApp: function(user) {
+                    var scope = this;
+                    this._user = user;
+                    this._events.trigger('ready', 'User', user);
+                    $('#login').text('Logout').click(_.once(function(){
+                        $('#main').empty();
+                        $('.welcome').text('Welcome!');
+                        scope._authService.logout();
+                    }));
+                    var userNode = this._firebaseRef.getUserRef(user);
+                    userNode.child('private').on('value', function(snapshot) {
+                        var privateInfo = snapshot.val();
+                        _(user).extend(privateInfo);
+                        $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
+                        scope._messageService = new MessageService(scope._firebaseRef, scope._user);
+                        scope.renderMain();
+                    });
+                },
+                renderMain: function() {
+                    var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
+                    var render = this.Pages[fragment.action] || this.Pages.home;
+                    render.call(this, fragment);
+                    $('a.fragnav').click(this.appLinkClick());
+                },
+                appLinkClick: function(){
+                    var scope = this;
+                    return function(e) {
+
+                        e.preventDefault();
+                        location.hash = '#' + this.href.split('#')[1];
+                        scope.renderMain();
+                    }
+
+                },
+                userCreated: function(user, created) {
+                    var userNode = this._firebaseRef.getUserRef(user);
+                    created.uuid = guid();
+                    userNode.child('private').set({name: created.name, uuid: created.uuid});
+                    _(user).extend(created);
+                    this.renderApp(user);
+                },
+                _errorHandler: function(error, msg) {
+                    this._events.trigger('error', error, msg);
+                },
+
+                appLink: function(markup) {
+                    return $(markup).click(this.appLinkClick());
+                }
+            }
+
+            var App = function(firebaseApp) {
+                var scope = this;
+                _.bindAll.apply(_, _.union([this], _(AppPrototype).functions()));
+                var firebaseRef = this._firebaseRef = global.app = new FirebaseService(firebaseApp);
+                var authService = this._authService = AuthService('login-panel', firebaseRef);
+                var events = this._events = _(Backbone.Events).clone();
                 authService.on('auth-error', function(error){
-                    errorHandler(error, 'Authentication Error');
+                    scope._errorHandler(error, 'Authentication Error');
                 });
                 authService
-                    .on('auth-user', renderApp)
-                    .on('auth-user-created', userCreated)
-                    .on('auth-anon', renderAnon)
+                    .on('auth-user', this.renderApp)
+                    .on('auth-user-created', this.userCreated)
+                    .on('auth-anon', this.renderAnon)
                     .on('auth-error', log)
                     .on('user-created-error', log);
 
@@ -49,140 +122,15 @@
                     log('ready', state);
                 });
                 authService.authenticate();
+            }
+
+            _(App.prototype).extend(AppPrototype);
+
+            $(function(){
+                app = new App('code-review-auth');
             });
 
-            function userCreated(user, created) {
-                var userNode = firebaseRef.getUserRef(user);
-                created.uuid = guid();
-                userNode.child('private').set({name: created.name, uuid: created.uuid});
-                _(user).extend(created);
-                renderPage(user);
-            }
-
-            function renderApp(u) {
-                user = u;
-                events.trigger('ready', 'User', user);
-
-                $('#login').text('Logout').click(_.once(function(){
-                    $('#main').empty();
-                    $('.welcome').text('Welcome!');
-                    authService.logout();
-                }));
-                var userNode = firebaseRef.getUserRef(user);
-                userNode.child('private').on('value', function(snapshot) {
-                    var privateInfo = snapshot.val();
-                    _(user).extend(privateInfo);
-                    $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
-                    messageService = new MessageService(firebaseRef, user);
-                    renderPage();
-                });
-            }
-
-            function renderPage() {
-                 var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
-                 var render = Render[fragment.action] || Render.home;
-                 render.call(this, fragment);
-                 $('a.fragnav').click(fragnavClick);
-            }
-
-            function fragnavClick(e) {
-                location.hash = '#' + this.href.split('#')[1];
-                renderPage();
-                e.preventDefault();
-            }
-
-
-            function accept(user,  message) {
-                messageService.reply(message, {
-                            type: "accept",
-                            project : {
-                                id: message.message.project,
-                                name: message.message.name,
-                                org: message.message.org,
-                                user: {id: user.id, provider: user.provider}
-                            }
-                 });
-                 firebaseRef.getUserRef(user).child('projects/' + message.message.project + '/users/' + firebaseRef.getId(message.from) + '/read').set(true);
-            }
-
-            var Render = {
-                home: function() {
-                    var userNode = firebaseRef.getUserRef(user);
-                    $('#main').empty().load('html/home/info.html', function(){
-                        messageService.on('message_added', function(message){
-                            switch(message.message.type) {
-                                case 'subscribe':
-                                    userNode.child('projects/' + message.message.project + '/details').on('value', function(s){
-                                        var projectDetails = s.val();
-                                        _(message.message).extend(projectDetails);
-                                        $('<p><a> Let ' + message.from.email + ' join ' + projectDetails.name + '</a></p>').appendTo('#main .messages')
-                                            .click(_.once(function(e){
-                                                e.preventDefault();
-                                                accept(user, message);
-                                                $(this).remove();
-                                                message.remove();
-                                            }));
-                                    });
-
-                                    break;
-                                case 'accept':
-                                     firebaseRef.getUserRef(user).child('private/subscribed-projects').push(message.message.project);
-                                    message.remove();
-                                    break;
-                                default:
-                                    $('#main .messages').append('<p> From:' + message.from.email + 'Message:' + message.message + '</p>');
-                            }
-                        });
-
-                        $('#main .my-projects').empty();
-                        userNode.child('projects').on('child_added', function(snapshot) {
-                            var project = snapshot.val();
-                            var projectDetail = {
-                                id: snapshot.name(),
-                                org: project.details.org,
-                                name: project.details.name
-                            };
-                            $('<p>').append(projectLink(projectDetail, user)).appendTo($('#main .my-projects'));
-
-                        });
-                        $('#main .subscribed-projects').empty();
-                        userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
-                            var project = snapshot.val();
-                            $('<p>').append(projectLink(project, project.user)).appendTo($('#main .subscribed-projects'));
-
-                        });
-                        messageService.listen();
-                    });
-                },
-                project: function(context) {
-                    window.renderProject(firebaseRef.getUserRef(context).child('projects/' + context.projectId), '#main', context.name);
-                },
-                /*
-                * Invitation to subscribe to a project
-                */
-                invite: function(context) {
-                    messageService.send(context, { type: "subscribe", project: context.project});
-                    Render.home(user, context);
-                }
-            }
-
-            function projectLink(project, user){
-                return appLink('<a class="fragnav" href="#action=project&projectId=' + project.id + '&id=' + user.id + '&provider=' + user.provider +'">' + project.org + '/' + project.name + '</a>');
-            }
-
-            function appLink(markup) {
-                return $(markup).click(fragnavClick);
-            }
-
-            function renderAnon() {
-                events.trigger('ready', 'Anon');
-                $('#login').text('Login').click(function(e){
-                    e.preventDefault();
-                    authService.login();
-                });
-            }
-
-            function log () {
+            function log() {
                 console.log.apply(console, arguments);
             }
 

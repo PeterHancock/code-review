@@ -1,10 +1,11 @@
 (function(){
-    var CodeReviews = function(firebase) {
+    var project;
+    var Project = function(firebase) {
         this._projectRef = firebase;
         this._projectDataRef = firebase.child('data');
         this._constraints = {};
     };
-    CodeReviews.prototype.load = function() {
+    Project.prototype.load = function() {
         var scope = this;
         this._projectRef.child('details').on('value', function(snapshot) {
             var details = snapshot.val();
@@ -110,15 +111,15 @@
 
         _(this).extend(Backbone.Events);
 
-    }).call(CodeReviews.prototype);
+    }).call(Project.prototype);
 
 
     // View logic
     function renderGenerate() {
         var tbody = $('<tbody></tbody>');
-        var reviewTable = codeReview.codeReviewTable();
+        var reviewTable = project.codeReviewTable();
         var revieweeTemplate = Mustache.compile($('#reviewee-tmpl').html());
-        _(codeReview.getReviewers()).each(function(reviewer){
+        _(project.getReviewers()).each(function(reviewer){
             row = $('<tr></tr>');
             tbody.append(row);
             var reviewerCell = $('<td/>');
@@ -126,37 +127,37 @@
             row.append(reviewerCell);
             reviewerCell.append(reviewerButton);
             reviewerButton.click(function() {
-                codeReview.toggleReviewer(reviewer);
+                project.toggleReviewer(reviewer);
             });
             var devCell =  $('<td/>');
             row.append(devCell);
             if (reviewer.active) {
                 var reviewee = reviewTable[reviewer.name];
-                var others = _.chain(codeReview.getActiveReviewers()).filter(function(r){
+                var others = _.chain(project.getActiveReviewers()).filter(function(r){
                         return r.name != reviewer.name && r.name != reviewee;
                 }).value();
                 var devButton = $(revieweeTemplate({reviewee: reviewee, others: others}));
                 devCell.append(devButton);
                 reviewerButton.attr('title', 'Remove ' + reviewer.name + ' from next Sprint')
                 var pinButton = devButton.find('.pin');
-                if (codeReview.hasConstraint(reviewer.name)) {
+                if (project.hasConstraint(reviewer.name)) {
                     pinButton.addClass('btn-warning');
                 }
                 pinButton.click(function(e) {
                     e.preventDefault();
                     pinButton.toggleClass('btn-warning');
-                    if (codeReview.hasConstraint(reviewer.name)) {
-                        codeReview.removeConstraint(reviewer.name);
+                    if (project.hasConstraint(reviewer.name)) {
+                        project.removeConstraint(reviewer.name);
                     } else {
-                        codeReview.addConstraint(reviewer.name, reviewee);
+                        project.addConstraint(reviewer.name, reviewee);
                     }
-                    codeReview.trigger('change');
+                    project.trigger('change');
 
                 });
                 _.chain(others).pluck('name').each(function(name) {
                     devButton.find('.pin-to-' + name).click(function(e) {
                         e.preventDefault();
-                        codeReview.addConstraint(reviewer.name, name);
+                        project.addConstraint(reviewer.name, name);
                        renderGenerate();
                     });
                 });
@@ -170,7 +171,7 @@
     }
 
     function renderCurrent() {
-        var history = codeReview.getHistory();
+        var history = project.getHistory();
         var currentEl = $('#current');
         currentEl.empty();
         var historyLength = history.length;
@@ -178,10 +179,10 @@
         if(historyLength > 0) {
             var current = $('<h2>' + formatSprint(_(history).first()) + '</h2>');
             currentEl.append(current);
-            if(codeReview.canRevert()) {
+            if(project.canRevert()) {
                 var removeBtn = $('<button class="btn btn-danger pull-right" title="Revert Sprint"><span class="glyphicon glyphicon-remove"></span></button>');
                 current.append(removeBtn);
-                removeBtn.click(_(codeReview.revert).bind(codeReview));
+                removeBtn.click(_(project.revert).bind(project));
                 removeBtn.tooltip();
             }
         } else {
@@ -190,7 +191,7 @@
     }
 
     function renderHistory() {
-        var history = codeReview.getHistory();
+        var history = project.getHistory();
         var historyEl = $('#history');
         historyEl.empty();
         var histLength = history.length;
@@ -207,7 +208,7 @@
     function renderPage() {
         renderCurrent();
         renderHistory();
-        codeReview.generate();
+        project.generate();
     }
 
     function renderErrorMessage(message) {
@@ -229,33 +230,43 @@
         }).join('    ');
     }
 
-    function init(firebase, el, name) {
+    function renderProject(firebase, el, name) {
         $(el).load('html/project/project.html', function(){
-            codeReview = this.codeReview = new CodeReviews(firebase);
-            codeReview.on('change', renderPage);
-            codeReview.on('generate', renderGenerate);
-            codeReview.on('error', renderErrorMessage);
+            project = this.project = new Project(firebase);
+            project.on('change', renderPage);
+            project.on('generate', renderGenerate);
+            project.on('error', renderErrorMessage);
             $('.project-name').text(name);
             $('#reshuffle').click(function(){
-                codeReview.generate();
+                project.generate();
             });
             $('#commit').click(function(){
-                codeReview.commit();
+                project.commit();
             });
             $('#create-developer-form').submit(function(e) {
                 e.preventDefault();
                 $('#addReviewer').modal('hide');
                 var name = $('#developer-name').val();
                 $('#developer-name').val('');
-                codeReview.addReviewer(name);
+                project.addReviewer(name);
             });
             $('.btn').each(function(i, e) {
                 $(e).tooltip();
             });
-            codeReview.load();
+            project.load();
+        });
+    }
+    function createProject(firebase, org, name) {
+        firebase.push({
+            details: {
+                name: name,
+                org: org
+            }
         });
     }
 
-    this.renderProject = init;
+    this.renderProject = renderProject;
+    
+    this.createProject = createProject;
 
 }).call(this);
