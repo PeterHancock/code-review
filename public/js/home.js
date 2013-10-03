@@ -4,7 +4,7 @@
         var user = app._user;
         var messageService = app._messageService;
         var userNode = firebaseRef.getUserRef(user);
-        main.load('html/home/info.html', function() {
+        main.load('html/home/home.html', function() {
             messageService.on('message_added', function(message) {
                 switch (message.message.type) {
                 case 'subscribe':
