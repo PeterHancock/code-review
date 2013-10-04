@@ -5,13 +5,23 @@
         var messageService = app._messageService;
         var userNode = firebaseRef.getUserRef(user);
         main.load('html/home/home.html', function() {
+            var messagesList = main.find('.messages')
+            var updateMessagesHeader = _(
+                function(){
+                    main.find('.messages-body').text('Your messages');
+                }
+            ).once();
+            var createMessage = function(){
+                return $('<li class="list-group-item">').appendTo(messagesList)
+            }
             messageService.on('message_added', function(message) {
+                updateMessagesHeader();
                 switch (message.message.type) {
                 case 'subscribe':
                     userNode.child('projects/' + message.message.project + '/details').on('value', function(s) {
                         var projectDetails = s.val();
                         _(message.message).extend(projectDetails);
-                        $('<p><a> Let ' + message.from.email + ' join ' + projectDetails.name + '</a></p>').appendTo(main.find('.messages')).click(_.once(function(e) {
+                        $('<a> Let ' + message.from.email + ' join ' + projectDetails.name + '</a>').appendTo(createMessage()).click(_.once(function(e) {
                             e.preventDefault();
                             messageService.reply(message, {
                                 type: "accept",
@@ -37,19 +47,23 @@
                     message.remove();
                     break;
                 default:
-                    main.find('.messages').append('<p> From:' + message.from.email + 'Message:' + message.message + '</p>');
+                    createMessage().text('From:' + message.from.email + 'Message:' + message.message);
                 }
             });
 
             main.find('.my-projects').empty();
+            var updateMyProjectsHeader = _(function(){
+                main.find('.my-projects-body').text('Projects owned my you');
+            }).once();
             userNode.child('projects').on('child_added', function(snapshot) {
+                updateMyProjectsHeader();
                 var project = snapshot.val();
                 var projectDetail = {
                     id: snapshot.name(),
                     org: project.details.org,
                     name: project.details.name
                 };
-                $('<p>').append(projectLink(app, projectDetail, user))
+                $('<li class="list-group-item">').append(projectLink(app, projectDetail, user))
                     .append(inviteLink(projectDetail, user))
                     .appendTo(main.find('.my-projects'));
             });
@@ -62,10 +76,14 @@
                 });
                 modal.modal('show');
             });
+             var updateSubscribedProjectsHeader = _(function(){
+                main.find('.subscribed-projects-body').text('Projects you watch');
+            }).once();
             main.find('.subscribed-projects').empty();
             userNode.child('private/subscribed-projects').on('child_added', function(snapshot) {
+                updateSubscribedProjectsHeader();
                 var project = snapshot.val();
-                $('<p>').append(projectLink(app, project, project.user)).appendTo(main.find('.subscribed-projects'));
+                $('<li class="list-group-item">').append(projectLink(app, project, project.user)).appendTo(main.find('.subscribed-projects'));
             });
             messageService.listen();
         });
