@@ -116,7 +116,7 @@
                     .on('auth-user-created', this.userCreated)
                     .on('auth-anon', this.renderAnon)
                     .on('auth-error', log)
-                    .on('user-created-error', log);
+                    .on('user-creation-error', log);
 
                 events.on('ready', function(state){
                     log('ready', state);
@@ -159,7 +159,14 @@
       </div><!-- /.navbar-collapse -->
     </nav>
     <div class="container">
-        <div id="main">Welcome to Code Review</div>
+        <div id="main">
+            <div class="jumbotron">
+                <div class="container">
+                    <h1>Welcome to Code Review</h1>
+                    <p>...</p>
+                    <p><a class="btn btn-primary btn-lg">Login or Sign up</a></p>
+                </div>
+            </div>
         <div id="login-panel"></div>
     </div>
 </body>
