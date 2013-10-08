@@ -1,34 +1,47 @@
 <h1 class="project-name"></h1>
-            <div id="error-messages"></div>
-            <div class="panel panel-default">
-<div class="panel-heading">
-            <h3>Current Sprint <span id="sprint-number"></span></h3>
-        </div>
-        <div id='current' class="panel-body"> </div>
+<div id="error-messages"></div>
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3>Current Sprint
+            <span id="sprint-number"></span>
+        </h3>
     </div>
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3><span style="padding-right: 1em">Generate New Sprint</span>
-            <button id="reshuffle" type="button" title="Shuffle Reviewers" class="btn btn-primary btn"><span class="glyphicon glyphicon-random"></span></button>
-            <button id="commit" type="button" class="btn btn-success btn" title="Start Sprint"><span class="glyphicon glyphicon-ok"></span></button>
-            </h3>
-        </div>
-        <div id="review" class="panel-body">
-            <table class="table">
-                <thead><tr><th>Reviewer</th><th>Developer</th></tr></thead>
-                <tbody></tbody>
-            </table>
-            <a data-toggle="modal" href="#addReviewer" class="btn btn-primary" title="Add a Reviewer/Developer"><span class="glyphicon glyphicon-plus"></span></a>
-        </div>
-  </div>
-  <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3>Code Review History</h3>
-        </div>
-        <div class="panel-body">
-            <ul id='history' class='list-group'> </ul>
-        </div>
-  </div>
+    <div id='current' class="panel-body"></div>
+</div>
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3>
+            <span style="padding-right: 1em">Generate New Sprint</span>
+            <button id="reshuffle" type="button" title="Shuffle Reviewers"
+            class="btn btn-primary btn">
+                <span class="glyphicon glyphicon-random"></span>
+            </button>
+            <button id="commit" type="button" class="btn btn-success btn" title="Start Sprint">
+                <span class="glyphicon glyphicon-ok"></span>
+            </button>
+        </h3>
+    </div>
+    <div id="review" class="panel-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Reviewer</th>
+                    <th>Developer</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <a data-toggle="modal" href="#addReviewer" class="btn btn-primary" title="Add a Reviewer/Developer"><span class="glyphicon glyphicon-plus"></span></a>
+    </div>
+</div>
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3>Code Review History</h3>
+    </div>
+    <div class="panel-body">
+        <ul id='history' class='list-group'></ul>
+    </div>
+</div>
 </div>
 
 <!-- Add Developer Modal -->

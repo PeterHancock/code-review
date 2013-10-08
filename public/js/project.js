@@ -7,7 +7,7 @@
     };
     Project.prototype.load = function() {
         var scope = this;
-        this._projectRef.child('details').on('value', function(snapshot) {
+        this._projectRef.child('details').once('value', function(snapshot) {
             var details = snapshot.val();
              $('.project-name').text(details.org + '/' + details.name);
         });
@@ -38,6 +38,15 @@
                 var gen = this._generated;
                 this._generated = null;
                 this._current = 'placeholder'; //TODO need a better race condition guard!
+                var revs = _(this._reviewers).reduce(function(memo, reviewer) {
+                    memo[reviewer.name] = reviewer.active;
+                    return memo;
+                }, {});
+                this._projectDataRef.child('reviewers').transaction(function(reviewers){
+                   return _(reviewers).map(function(reviewer){
+                      return {name: reviewer.name, active: revs[reviewer.name]};
+                   });
+                });
                 this._current = this._projectDataRef.child('history').push(gen);
             }
         }
@@ -55,12 +64,21 @@
         }
 
         this.addConstraint = function(reviewerName, revieweeName) {
+            var scope = this;
+            _(this._constraints).find(function(v, k){
+                if (v == revieweeName) {
+                    delete scope._constraints[k];
+                    return true;
+                }
+                return false;
+            });
             this._constraints[reviewerName] = revieweeName;
             this.trigger('change');
         }
 
         this.removeConstraint = function(reviewerName) {
             delete this._constraints[reviewerName];
+            this.trigger('change');
         }
 
         this.hasConstraint = function (reviewerName) {
@@ -151,14 +169,11 @@
                     } else {
                         project.addConstraint(reviewer.name, reviewee);
                     }
-                    project.trigger('change');
-
                 });
                 _.chain(others).pluck('name').each(function(name) {
                     devButton.find('.pin-to-' + name).click(function(e) {
                         e.preventDefault();
                         project.addConstraint(reviewer.name, name);
-                       renderGenerate();
                     });
                 });
             } else {

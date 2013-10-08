@@ -13,7 +13,7 @@
                 console.assert(_(reviewers).contains(reviewer));
             });
         }
-        var items = applyConstraints(reviewers, constraints);
+        var items = applyConstraints(reviewers, _(constraints).clone());
         var allCosts = calcAllCosts(reviewers, history);
         var shuffled = [shuffleItems(items.runs, allCosts)];
         shuffled.push.apply(shuffled, items.loops);
@@ -22,7 +22,7 @@
 
     function applyConstraints(reviewers, constraints) {
         var loops = [];
-        var runs = [];
+        var runs = {};
         var constrained = [];
         constraints = constraints || {};
         function buildRun(reviewer, run) {
@@ -36,17 +36,23 @@
                 delete constraints[reviewer];
                 if(run[0] == reviewee) {
                     loops.push(run);
+                } else if(runs[reviewee]) {
+                    run = run.concat(runs[reviewee]);
+                    delete runs[reviewee];
+                    runs[run[0]] = run;
+                    buildRun(reviewee, run);
                 } else {
                     run.push(reviewee);
                     buildRun(reviewee, run);
                 }
             } else {
-                runs.push(run);
+                runs[run[0]] = run;
             }
         };
         _.chain(constraints).keys().each(function(reviewer) {
             buildRun(reviewer);
         });
+        runs = _(runs).values();
         _.chain(reviewers).difference(constrained).each(function(free) {
             runs.push([free]);
         });
@@ -70,13 +76,13 @@
 
     function shuffle5Items(items, allCosts) {
         if (items.length < 3) {
-            return items;
+            return _(items).flatten();
         }
         var first = _(items).first();
         var rest = _(items).rest();
         var restCombos = combinations(rest);
         var minCost = costOf(items, allCosts);
-        var bestOrder = [items];
+        var bestOrder = [];
         _(restCombos).each(function(combo){
             var order = [first].concat(combo);
             var cost = costOf(order, allCosts);
@@ -168,4 +174,3 @@
         throw new Error('This library only supports node.js and modern browsers.');
     }
 }).call(this);
-
