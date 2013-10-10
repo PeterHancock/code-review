@@ -32,7 +32,8 @@
                         window.renderHome(this, $('#main'))
                     },
                     project: function(context) {
-                        window.renderProject(this._firebaseRef.getUserRef(context).child('projects/' + context.projectId), '#main', context.name);
+                        var project = {id: context.projectId, name: context.name}
+                        window.renderProject(this._firebaseRef.getUserRef(context).child('projects/' + context.projectId), '#main', project, this._user);
                     },
                     /*
                     * Invitation to subscribe to a project
@@ -47,7 +48,7 @@
                 renderAnon: function() {
                     var scope = this;
                     this._events.trigger('ready', 'Anon');
-                    $('#login').text('Login').click(function(e){
+                    $('#login').text('Login').off().click(function(e){
                         e.preventDefault();
                         scope._authService.login();
                     });
@@ -56,7 +57,7 @@
                     var scope = this;
                     this._user = user;
                     this._events.trigger('ready', 'User', user);
-                    $('#login').text('Logout').click(_.once(function(){
+                    $('#login').text('Logout').off().click(_.once(function(){
                         $('#main').empty();
                         $('.welcome').text('Welcome!');
                         scope._authService.logout();
@@ -65,7 +66,7 @@
                     userNode.child('private').on('value', function(snapshot) {
                         var privateInfo = snapshot.val();
                         _(user).extend(privateInfo);
-                        $('.welcome').text('Welcome ' + user.email + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
+                        $('.welcome').text('Welcome ' + user.email); // + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
                         scope._messageService = new MessageService(scope._firebaseRef, scope._user);
                         scope.renderMain();
                     });
@@ -79,7 +80,6 @@
                 appLinkClick: function(){
                     var scope = this;
                     return function(e) {
-
                         e.preventDefault();
                         location.hash = '#' + this.href.split('#')[1];
                         scope.renderMain();
@@ -147,7 +147,7 @@
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand fragnav" href="#">Code Review</a>
+        <a class="navbar-brand fragnav" href="#"><span class="glyphicon glyphicon-home"></span></a>
       </div>
 
       <!-- Collect the nav links, forms, and other content for toggling -->
@@ -167,6 +167,7 @@
                     <p><a class="btn btn-primary btn-lg">Login or Sign up</a></p>
                 </div>
             </div>
+        </div>
         <div id="login-panel"></div>
     </div>
 </body>

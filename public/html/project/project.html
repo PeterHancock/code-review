@@ -1,4 +1,10 @@
-<h1 class="project-name"></h1>
+<div class="page-header">
+    <h1>
+        <small>
+            <span class="project-org"></span>/</small>
+        <span class="project-name"></span>
+    </h1>
+</div>
 <div id="error-messages"></div>
 <div class="panel panel-default">
     <div class="panel-heading">
@@ -8,7 +14,7 @@
     </div>
     <div id='current' class="panel-body"></div>
 </div>
-<div class="panel panel-default">
+<div id="generate" class="panel panel-default" style="display: none;">
     <div class="panel-heading">
         <h3>
             <span style="padding-right: 1em">Generate New Sprint</span>
@@ -42,7 +48,16 @@
         <ul id='history' class='list-group'></ul>
     </div>
 </div>
+<div id="admin" class="panel panel-default" style="display: none;">
+    <div class="panel-heading">
+        <h3>Project Admin</h3>
+    </div>
+    <div class="panel-body">
+        <a id='invite'></a>
+        <ul id='users' class='list-group'></ul>
+    </div>
 </div>
+
 
 <!-- Add Developer Modal -->
 <div class="modal fade" id="addReviewer" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">

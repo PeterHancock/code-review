@@ -64,7 +64,6 @@
                     name: project.details.name
                 };
                 $('<li class="list-group-item">').append(projectLink(app, projectDetail, user))
-                    .append(inviteLink(projectDetail, user))
                     .appendTo(main.find('.my-projects'));
             });
             main.find('.add-project-link').click(function(e){
@@ -91,11 +90,6 @@
 
     function projectLink(app, project, user) {
         return app.appLink('<a class="fragnav" href="#action=project&projectId=' + project.id + '&id=' + user.id + '&provider=' + user.provider + '">' + project.org + '/' + project.name + '</a>');
-    }
-    function inviteLink(project, user) {
-        var inviteLinkTmpl = window.location.href.split('#')[0] + '#action=invite&uuid={{uuid}}&id={{id}}&provider={{provider}}&projectId={{projectId}}'
-        var inviteLink = encodeURIComponent(Mustache.render(inviteLinkTmpl, {projectId: project.id, uuid: user.uuid, id: user.id, provider: user.provider}));
-        return $('<a href="mailto:?Subject=Invite&body=' + inviteLink + '"><span class="glyphicon glyphicon-user"></span</a>');
     }
 
     this.renderHome = renderHome;

@@ -9,7 +9,8 @@
         var scope = this;
         this._projectRef.child('details').once('value', function(snapshot) {
             var details = snapshot.val();
-             $('.project-name').text(details.org + '/' + details.name);
+            $('.project-org').text(details.org);
+            $('.project-name').text(details.name);
         });
         this._projectDataRef.on('value', function(snapshot) {
             var data = snapshot.val();
@@ -18,6 +19,7 @@
             scope._sortReviewers();
             scope.trigger('change');
         });
+
     };
     (function(){
 
@@ -220,6 +222,21 @@
         }
     }
 
+    function renderAdmin(users, projectId, user) {
+        console.log('Project owner can access the users:', users);
+        var inviteLinkTmpl = window.location.href.split('#')[0] + '#action=invite&uuid={{uuid}}&id={{id}}&provider={{provider}}&projectId={{projectId}}'
+        var inviteLink = encodeURIComponent(Mustache.render(inviteLinkTmpl, {projectId: projectId, uuid: user.uuid, id: user.id, provider: user.provider}));
+        $('#invite').attr('href', 'mailto:?Subject=Invite&body=' + inviteLink).text('invite');
+        if (users) {
+            var $_users = $('#users');
+            _(users).each(function(permissions, name){
+                var perm = '' + (permissions.write ? '(write access)' : '');
+                $('<li class="list-group-item">' ).text(name  + ' ' + perm).appendTo($_users);
+            });
+        }
+        $('#admin').show();
+    }
+
     function renderPage() {
         renderCurrent();
         renderHistory();
@@ -245,26 +262,50 @@
         }).join('    ');
     }
 
-    function renderProject(firebase, el, name) {
+    function renderProject(firebase, el, projectDetails, user) {
+        var name = projectDetails.name;
+        var projectId = projectDetails.id;
         $(el).load('html/project/project.html', function(){
             project = this.project = new Project(firebase);
+            var setupWriteAccess = function() {
+                project.on('generate', renderGenerate);
+                     $('#reshuffle').click(function(){
+                    project.generate();
+                });
+                $('#commit').click(function(){
+                    project.commit();
+                });
+                $('#create-developer-form').submit(function(e) {
+                    e.preventDefault();
+                    $('#addReviewer').modal('hide');
+                    var name = $('#developer-name').val();
+                    $('#developer-name').val('');
+                    project.addReviewer(name);
+                });
+                $('#generate').show();
+            }
+
+            // Only the project owner has access to the users
+            firebase.child('users').once('value', function(s){
+                var users = s.val();
+                renderAdmin(users, projectId, user);
+                setupWriteAccess();
+            });
+
+            firebase.child('users/' + user.id + ':' + user.provider).once('value', function(s){
+                var permission = s.val();
+                // Only project watchers have an entry in the project users list
+                if (permission) {
+                    console.log('Project watcher has permissions', permission);
+                    if (permission.write === true) {
+                         setupWriteAccess();
+                    }
+                }
+            });
             project.on('change', renderPage);
-            project.on('generate', renderGenerate);
             project.on('error', renderErrorMessage);
             $('.project-name').text(name);
-            $('#reshuffle').click(function(){
-                project.generate();
-            });
-            $('#commit').click(function(){
-                project.commit();
-            });
-            $('#create-developer-form').submit(function(e) {
-                e.preventDefault();
-                $('#addReviewer').modal('hide');
-                var name = $('#developer-name').val();
-                $('#developer-name').val('');
-                project.addReviewer(name);
-            });
+
             $('.btn').each(function(i, e) {
                 $(e).tooltip();
             });
@@ -281,7 +322,7 @@
     }
 
     this.renderProject = renderProject;
-    
+
     this.createProject = createProject;
 
 }).call(this);
