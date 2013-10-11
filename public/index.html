@@ -48,6 +48,8 @@
                 renderAnon: function() {
                     var scope = this;
                     this._events.trigger('ready', 'Anon');
+                     location.hash = '';
+                    $('#main').load('index.html #main > *');
                     $('#login').text('Login').off().click(function(e){
                         e.preventDefault();
                         scope._authService.login();
@@ -162,9 +164,9 @@
         <div id="main">
             <div class="jumbotron">
                 <div class="container">
-                    <h1>Welcome to Code Review</h1>
+                    <h1>Code Review</h1>
                     <p>...</p>
-                    <p><a class="btn btn-primary btn-lg">Login or Sign up</a></p>
+                    <p><a class="btn btn-primary btn-lg">Login/Sign up</a></p>
                 </div>
             </div>
         </div>

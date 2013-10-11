@@ -34,7 +34,7 @@
     AuthService.prototype.login = function() {
         var scope = this;
         var loginDialog = $('#' + this._id).empty();
-        loginDialog.hide().load('html/login/login.html', function(){
+        loginDialog.hide().load('html/login/login.html #login-modal', function(){
             var modal = scope._modal = $('#' + scope._id + ' .login');
             modal.modal('show');
             $('#github').click(function(e){
@@ -42,27 +42,41 @@
                 modal.modal('hide');
                 scope._auth.login('github', {rememberMe:true});
             });
-            $('#password').click(function(e){
-                e.preventDefault();
-                modal.modal('hide');
-                scope._auth.login('password', {email:'peter.hancock@gmail.com', password: 'password'});
-            });
             loginDialog.find('.sign-in').click(function(e){
                 e.preventDefault();
                 modal.modal('hide');
                 scope._auth.login('password', {email: $('#inputEmail1').val(), password: $('#inputPassword1').val()});
             });
-            loginDialog.find('.create-user').click(function(e){
+            loginDialog.find('.register').click(function(e){
                 e.preventDefault();
-                scope._create($('#inputEmail1').val(), $('#inputPassword1').val(), $('#inputName1').val());
+                modal.modal('hide');
+                scope._register();
             });
             loginDialog.show();
         });
     }
 
-    AuthService.prototype._create = function(email, password, name){
+    AuthService.prototype._register = function(){
+        var scope = this;
+        var registerDialog = $('#' + this._id);
+        registerDialog.empty().hide().load('html/login/login.html #register-modal', function(){
+            var modal = scope._modal = $('#' + scope._id + ' #register-modal');
+            modal.modal('show');
+            registerDialog.find('.create-user').click(function(e){
+                e.preventDefault();
+                scope._create($('#inputEmail1').val(), $('#inputPassword1').val(),
+                        $('#inputPassword2').val(), $('#inputName1').val());
+            })
+            registerDialog.show();
+        });
+   }
+
+    AuthService.prototype._create = function(email, password, passwordRepeat, name){
         var scope = this;
         this._created = {name: name};
+        if (password !== passwordRepeat) {
+            return scope._modal.find('.messages').append('<div class="alert alert-danger">Passwords differ!</div>');
+        }
         this._auth.createUser(email, password, function(error, user) {
             if(error) {
                 scope.trigger('user-creation-error', error);
