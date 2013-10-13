@@ -49,7 +49,6 @@
             });
             loginDialog.find('.register').click(function(e){
                 e.preventDefault();
-                modal.modal('hide');
                 scope._register();
             });
             loginDialog.show();
@@ -58,10 +57,8 @@
 
     AuthService.prototype._register = function(){
         var scope = this;
-        var registerDialog = $('#' + this._id);
-        registerDialog.empty().hide().load('html/login/login.html #register-modal', function(){
-            var modal = scope._modal = $('#' + scope._id + ' #register-modal');
-            modal.modal('show');
+        var registerDialog = $('#' + this._id).find('.modal-dialog');
+        registerDialog.empty().hide().load('html/login/login.html #register-dialog', function(){
             registerDialog.find('.create-user').click(function(e){
                 e.preventDefault();
                 scope._create($('#inputEmail1').val(), $('#inputPassword1').val(),

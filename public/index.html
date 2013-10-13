@@ -48,18 +48,21 @@
                 renderAnon: function() {
                     var scope = this;
                     this._events.trigger('ready', 'Anon');
-                     location.hash = '';
                     $('#main').load('index.html #main > *');
                     $('#login').text('Login').off().click(function(e){
                         e.preventDefault();
-                        scope._authService.login();
+                        scope._login();
                     });
+                },
+                _login: function() {
+                    this._authService.login();
                 },
                 renderApp: function(user) {
                     var scope = this;
                     this._user = user;
                     this._events.trigger('ready', 'User', user);
                     $('#login').text('Logout').off().click(_.once(function(){
+                        ocation.hash = '';
                         $('#main').empty();
                         $('.welcome').text('Welcome!');
                         scope._authService.logout();
@@ -124,6 +127,10 @@
                 events.on('ready', function(state){
                     log('ready', state);
                 });
+                $(document).on('click', '.login-action', function(e) {
+                    e.preventDefault();
+                    scope._login();
+                });
                 authService.authenticate();
             }
 
@@ -169,7 +176,7 @@
                 <div class="container">
                     <h1>Code Review</h1>
                     <p>...</p>
-                    <p><a class="btn btn-primary btn-lg">Login/Sign up</a></p>
+                    <p><a class="btn btn-primary btn-lg login-action">Login/Sign up</a></p>
                 </div>
             </div>
         </div>
