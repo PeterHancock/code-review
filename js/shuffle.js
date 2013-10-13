@@ -12,8 +12,8 @@
                 console.assert(_(reviewers).contains(reviewee));
                 console.assert(_(reviewers).contains(reviewer));
             });
-        }     
-        var items = applyConstraints(reviewers, constraints);
+        }
+        var items = applyConstraints(reviewers, _(constraints).clone());
         var allCosts = calcAllCosts(reviewers, history);
         var shuffled = [shuffleItems(items.runs, allCosts)];
         shuffled.push.apply(shuffled, items.loops);
@@ -22,7 +22,7 @@
 
     function applyConstraints(reviewers, constraints) {
         var loops = [];
-        var runs = [];
+        var runs = {};
         var constrained = [];
         constraints = constraints || {};
         function buildRun(reviewer, run) {
@@ -36,17 +36,23 @@
                 delete constraints[reviewer];
                 if(run[0] == reviewee) {
                     loops.push(run);
+                } else if(runs[reviewee]) {
+                    run = run.concat(runs[reviewee]);
+                    delete runs[reviewee];
+                    runs[run[0]] = run;
+                    buildRun(reviewee, run);
                 } else {
                     run.push(reviewee);
                     buildRun(reviewee, run);
                 }
             } else {
-                runs.push(run);
+                runs[run[0]] = run;
             }
         };
         _.chain(constraints).keys().each(function(reviewer) {
             buildRun(reviewer);
         });
+        runs = _(runs).values();
         _.chain(reviewers).difference(constrained).each(function(free) {
             runs.push([free]);
         });
@@ -54,7 +60,7 @@
     }
 
     function shuffleItems(items, allCosts) {
-        while (items.length > 1) {
+        while (items.length > 5) {
             items = _(items).shuffle();
             var head = _(items).first();
             var tail = _(items).rest();
@@ -65,28 +71,63 @@
             items = _(items).reject(function(item) {
                     return _(item).first() == _(best).first();})
         }
-        return items.length > 0 ? reduceClosureCost(_(items).head(), allCosts) : items;
+        return shuffle5Items(items, allCosts);
     }
-   
-    function reduceClosureCost(items, allCosts) {
-        var initial = _(items).initial();
-        var last = _(initial).last();
-        var cost = (allCosts[_(initial).last()][last] || 0) + (allCosts[last][_(initial).head()] || 0);
-        var improvement = _.chain(initial).rest().reduce(function(memo, next, i) {
-            var cost = (allCosts[memo.prev][last] || 0) + (allCosts[last][next] || 0);
-            memo.prev = next;
-            if(cost < memo.cost) {
-                memo.cost = cost;
-                memo.i = i + 1;
-            }
-            return memo;
-        }, {cost: cost, i: 0, prev: _(initial).head()});
-        var i = improvement.i;
-        if (i > 0) {
-            items = initial;
-            items.splice(i, i, last);
+
+    function shuffle5Items(items, allCosts) {
+        if (items.length < 3) {
+            return _(items).flatten();
         }
-        return items;
+        var first = _(items).first();
+        var rest = _(items).rest();
+        var restCombos = combinations(rest);
+        var minCost = costOf(items, allCosts);
+        var bestOrder = [];
+        _(restCombos).each(function(combo){
+            var order = [first].concat(combo);
+            var cost = costOf(order, allCosts);
+            if (cost < minCost) {
+                minCost = cost;
+                bestOrder = [order];
+            } else if(cost == minCost) {
+                bestOrder.push(order);
+            }
+        });
+        return _(bestOrder[_.random(bestOrder.length - 1)]).flatten(true);
+    }
+
+    function combinations(list) {
+        var combos = []
+        if (list.length == 1) {
+            combos.push(list);
+        } else if (list.length > 1) {
+           var len = list.length;
+           while(len > 0) {
+               var first = _(list).first();
+               var rest = _(list).rest();
+               var restCombos = combinations(rest);
+               _(restCombos).each(function(r) {
+                   combos.push([first].concat(r));
+               });
+               rest.push(first);
+               list = rest;
+               len--;
+           }
+        }
+        return combos;
+    }
+
+    function costOf(items, allCosts) {
+        if (items.length < 2) {
+            return 0;
+        }
+        var first = _(items).first();
+        var rest = _(items).rest();
+        return _(rest).reduce(function(memo, next){
+            memo.cost = memo.cost + (allCosts[_(memo.prev).last()][_(next).first()] || 0);
+            memo.prev = next;
+            return memo;
+        }, {cost: allCosts[_.chain(rest).last().last().value()][_(first).head()] || 0, prev: first}).cost;
     }
 
     function calcAllCosts(reviewers, history) {
@@ -96,7 +137,7 @@
             return memo;
         }, {})
     }
-   
+
     function calcReviewerHistory(reviewer, reviewers, history) {
         return _(history).reduce(function(memo, sprint) {
             var group = _(sprint).find(function(group) {
@@ -115,7 +156,7 @@
             return memo;
             }, [] );
     }
-   
+
     function calcReviewCost(reviewer, reviewerHistory) {
         var weight = 1;
         return _(reviewerHistory).reduce(function(memo, reviewee) {
@@ -133,4 +174,3 @@
         throw new Error('This library only supports node.js and modern browsers.');
     }
 }).call(this);
-
