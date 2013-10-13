@@ -104,8 +104,9 @@
                 }
             }
 
-            var App = function(firebaseApp) {
+            var App = function(config) {
                 var scope = this;
+                var firebaseApp = config.firebaseApp;
                 _.bindAll.apply(_, _.union([this], _(AppPrototype).functions()));
                 var firebaseRef = this._firebaseRef = global.app = new FirebaseService(firebaseApp);
                 var authService = this._authService = AuthService('login-panel', firebaseRef);
@@ -129,7 +130,9 @@
             _(App.prototype).extend(AppPrototype);
 
             $(function(){
-                app = new App('code-review-auth');
+                $.getJSON('config.json', function(config){
+                    app = new App(config);
+                })
             });
 
             function log() {
