@@ -1,0 +1,59 @@
+{
+  "rules": {
+    "users": {
+      "$userId" : {
+        ".read": "$userId == auth.id + ':' + auth.provider",
+        ".write": "$userId == auth.id + ':' + auth.provider",
+        "projects": {
+          "$project": {
+            "data": {
+              ".write": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + ':' + auth.provider + '/write').exists()",
+              ".read": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + ':' + auth.provider +'/read').exists()"  
+            },
+            "details": {
+               ".read": "root.child('users/' + $userId + '/projects/' + $project + '/users/' + auth.id + ':' + auth.provider +'/read').exists()"  
+            },
+            "users" : {
+              "$userId" : {
+                ".read": "$userId == auth.id + ':' + auth.provider"
+              }
+            }
+          }
+        },
+        "messages": {
+          ".write": "auth != null",
+          "$message": {
+            ".validate": "newData.hasChildren(['from', 'uuid',  'message']) && !data.exists()",
+            "from": {
+              ".validate": "newData.hasChildren(['id', 'uuid',  'email', 'provider']) && !data.exists()",
+              "email": {
+                ".validate": "newData.val() == auth.email"
+              },
+              "id": {
+                ".validate": "newData.val() == auth.id"
+              },
+              "providr": {
+                ".validate": "newData.val() == auth.provider"
+              },
+              "uuid": {
+                ".validate": "newData.isString()"
+              }
+            },
+            "uuid": {
+              ".validate": "newData.val() == root.child('users/' + $userId + '/private/uuid').val()"
+            },
+            "message": {
+              ".validate": "newData.hasChildren(['type']) && !data.exists()",
+              "type": {
+                ".validate": "!data.exists()"
+              }
+            },
+            "$others": {
+              ".validate": "false"
+            }
+          }
+        }
+      }
+    }
+  }
+}
