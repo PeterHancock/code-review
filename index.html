@@ -48,23 +48,30 @@
                 renderAnon: function() {
                     var scope = this;
                     this._events.trigger('ready', 'Anon');
-                     location.hash = '';
                     $('#main').load('index.html #main > *');
                     $('#login').text('Login').off().click(function(e){
                         e.preventDefault();
-                        scope._authService.login();
+                        scope._login();
                     });
                 },
-                renderApp: function(user) {
+                _login: function() {
+                    this._authService.login();
+                },
+                renderApp: function(user, created) {
                     var scope = this;
                     this._user = user;
+                    var userNode = this._firebaseRef.getUserRef(user);
+                    created = created || {name: user.name};
+                    created.uuid = guid();
+                    userNode.child('private').set(created);
+                    _(user).extend(created);
                     this._events.trigger('ready', 'User', user);
                     $('#login').text('Logout').off().click(_.once(function(){
+                        location.hash = '';
                         $('#main').empty();
                         $('.welcome').text('Welcome!');
                         scope._authService.logout();
                     }));
-                    var userNode = this._firebaseRef.getUserRef(user);
                     userNode.child('private').on('value', function(snapshot) {
                         var privateInfo = snapshot.val();
                         _(user).extend(privateInfo);
@@ -88,13 +95,6 @@
                     }
 
                 },
-                userCreated: function(user, created) {
-                    var userNode = this._firebaseRef.getUserRef(user);
-                    created.uuid = guid();
-                    userNode.child('private').set({name: created.name, uuid: created.uuid});
-                    _(user).extend(created);
-                    this.renderApp(user);
-                },
                 _errorHandler: function(error, msg) {
                     this._events.trigger('error', error, msg);
                 },
@@ -116,13 +116,16 @@
                 });
                 authService
                     .on('auth-user', this.renderApp)
-                    .on('auth-user-created', this.userCreated)
                     .on('auth-anon', this.renderAnon)
                     .on('auth-error', log)
                     .on('user-creation-error', log);
 
                 events.on('ready', function(state){
                     log('ready', state);
+                });
+                $(document).on('click', '.login-action', function(e) {
+                    e.preventDefault();
+                    scope._login();
                 });
                 authService.authenticate();
             }
@@ -168,8 +171,8 @@
             <div class="jumbotron">
                 <div class="container">
                     <h1>Code Review</h1>
-                    <p>...</p>
-                    <p><a class="btn btn-primary btn-lg">Login/Sign up</a></p>
+                    <p>Manage your peer review process by assigning reviewers based upon historic assignments, with a touch of randomness</p>
+                    <p><a class="btn btn-primary btn-lg login-action">Login/Sign up</a></p>
                 </div>
             </div>
         </div>
