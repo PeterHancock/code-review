@@ -4,6 +4,14 @@
       "$userId" : {
         ".read": "$userId == auth.id + ':' + auth.provider",
         ".write": "$userId == auth.id + ':' + auth.provider",
+        "private" : {
+          "name": {
+             ".validate": "!data.exists()"
+          },
+          "uuid": {
+            ".validate": "!data.exists()"
+          } 
+        },
         "projects": {
           "$project": {
             "data": {

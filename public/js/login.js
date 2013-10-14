@@ -15,12 +15,9 @@
             if(error) {
                 return scope.trigger('auth-error', error);
             } else if (user) {
-                if (scope._created) {
-                    var created = scope._created;
-                    scope._created = undefined;
-                    return scope.trigger('auth-user-created', user, created);
-                }
-                return scope.trigger('auth-user', user);
+                var created = scope._created;
+                scope._created = undefined;
+                return scope.trigger('auth-user', user, created);
             } else {
                 return scope.trigger('auth-anon');
             }
