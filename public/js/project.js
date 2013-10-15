@@ -1,4 +1,5 @@
 (function(){
+    var global = this;
     var project;
     var Project = function(firebase) {
         this._projectRef = firebase;
@@ -266,7 +267,7 @@
         var name = projectDetails.name;
         var projectId = projectDetails.id;
         $(el).load('html/project/project.html', function(){
-            project = this.project = new Project(firebase);
+            project = global.project = new Project(firebase);
             var setupWriteAccess = function() {
                 project.on('generate', renderGenerate);
                      $('#reshuffle').click(function(){
