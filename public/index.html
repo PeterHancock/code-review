@@ -61,7 +61,7 @@
                     var scope = this;
                     this._user = user;
                     var userNode = this._firebaseRef.getUserRef(user);
-                    created = created || {name: user.name};
+                    created = created || {name: user.email};
                     created.uuid = guid();
                     userNode.child('private').set(created);
                     _(user).extend(created);
@@ -75,7 +75,7 @@
                     userNode.child('private').on('value', function(snapshot) {
                         var privateInfo = snapshot.val();
                         _(user).extend(privateInfo);
-                        $('.welcome').text('Welcome ' + user.email); // + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
+                        $('.welcome').text('Welcome ' + user.name); // + ' (' + user.id + ':' + user.provider + ' "' +  user.name + '" uuid:'+  user.uuid + ')');
                         scope._messageService = new MessageService(scope._firebaseRef, scope._user);
                         scope.renderMain();
                     });
@@ -180,4 +180,3 @@
     </div>
 </body>
 </html>
-
