@@ -61,7 +61,7 @@
                     var scope = this;
                     this._user = user;
                     var userNode = this._firebaseRef.getUserRef(user);
-                    created = created || {name: user.email};
+                    created = created || this._createAppUser(user);
                     created.uuid = guid();
                     userNode.child('private').set(created);
                     _(user).extend(created);
@@ -80,6 +80,19 @@
                         scope.renderMain();
                     });
                 },
+                _createAppUser: function (firebaseUser) {
+                    var name = ({
+                        github: function(user) {
+                            return user.username;
+                        },
+                        password: function(user) {
+                            return user.email;
+                        }
+
+                    })[firebaseUser.provider](firebaseUser);
+                    return {name: name};
+                },
+
                 renderMain: function() {
                     var fragment = $.param.fragment() ? $.deparam.fragment() : {action: 'home'};
                     var render = this.Pages[fragment.action] || this.Pages.home;
